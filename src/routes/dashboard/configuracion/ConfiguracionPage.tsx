@@ -61,7 +61,7 @@ export default function ConfiguracionPage() {
         </Card>
       ) : !business ? (
         <Card>
-          <p className="font-sans text-body text-body">
+          <p className="font-sans text-body">
             No encontramos tu negocio. Contacta soporte si crees que es un error.
           </p>
         </Card>
