@@ -1,7 +1,7 @@
 import { useFormContext } from 'react-hook-form';
 import { Card } from '@/components/ui/Card';
 import { Textarea } from '@/components/ui/Textarea';
-import type { ConfiguracionFormValues } from '../ConfiguracionPage';
+import type { ConfiguracionFormValues } from '../schema';
 
 export function MensajeBienvenidaCard() {
   const {
