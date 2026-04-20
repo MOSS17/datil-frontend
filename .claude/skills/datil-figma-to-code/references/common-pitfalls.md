@@ -169,6 +169,39 @@ Dashboard pages render inside `DashboardLayout`, which already provides the side
 
 ---
 
+## 14. `tailwind-merge` silently drops custom color tokens when paired with size tokens
+
+**Symptom:** Button (or any component using `cn()`) shows the wrong text color — e.g. primary button text is gray instead of white, or heading text doesn't match Figma even though the color class is listed in the JSX.
+
+**Root cause:** `tailwind-merge` v3 doesn't know about our custom design-system tokens. It groups both `text-on-color` (a color utility) and `text-body-sm` (a font-size utility) into the same conflict bucket. When `cn()` merges them, the last one wins and the earlier one is silently dropped. In `Button.tsx`, size classes come after variant classes, so `text-on-color` was always dropped — leaving text to inherit from `body { color: #5f5857 }`.
+
+**Fix:** `src/lib/cn.ts` uses `extendTailwindMerge` (not bare `twMerge`) and registers our token names under the correct groups:
+
+```ts
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      'font-size': [{ text: ['h1'..'h6', 'h1-mobile'..'h6-mobile', 'body-lg', 'body', 'body-sm', 'caption'] }],
+      'text-color': [{ text: ['heading', 'body-emphasis', 'muted', 'on-color', 'disabled', ...] }],
+    },
+  },
+});
+```
+
+**Check:** If a button or text element looks the wrong color, run this before checking CSS:
+
+```js
+node -e "
+const { twMerge } = require('tailwind-merge');
+console.log(twMerge('text-on-color', 'text-body-sm'));
+// Should output both; if only one appears, the tokens aren't registered
+"
+```
+
+**Never** import bare `twMerge` from `tailwind-merge` in this project — always use `cn()` from `src/lib/cn.ts` which has the extended config.
+
+---
+
 ## Diagnostic commands
 
 When a style doesn't match Figma, these three commands usually find it fast:
