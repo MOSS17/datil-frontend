@@ -11,9 +11,9 @@ const HomePage = lazy(() => import('./dashboard/HomePage'));
 const ServicesPage = lazy(() => import('./dashboard/ServicesPage'));
 const CategoriesPage = lazy(() => import('./dashboard/CategoriesPage'));
 const AppointmentsPage = lazy(() => import('./dashboard/AppointmentsPage'));
-const SchedulePage = lazy(() => import('./dashboard/SchedulePage'));
+const SchedulePage = lazy(() => import('./dashboard/schedule/SchedulePage'));
 const PersonalTimePage = lazy(() => import('./dashboard/PersonalTimePage'));
-const ConfiguracionPage = lazy(() => import('./dashboard/ConfiguracionPage'));
+const ConfiguracionPage = lazy(() => import('./dashboard/configuracion/ConfiguracionPage'));
 const BankDetailsPage = lazy(() => import('./dashboard/BankDetailsPage'));
 
 const BookingLayout = lazy(() => import('./booking/BookingLayout'));

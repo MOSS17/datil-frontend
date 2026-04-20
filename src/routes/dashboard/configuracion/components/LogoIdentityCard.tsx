@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useUploadBusinessLogo } from '@/api/hooks/useBusiness';
 import type { Business } from '@/api/types/business';
-import type { ConfiguracionFormValues } from '../ConfiguracionPage';
+import type { ConfiguracionFormValues } from '../schema';
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 const ACCEPTED_LOGO_MIME = ['image/png', 'image/jpeg', 'image/svg+xml'];

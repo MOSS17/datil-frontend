@@ -26,7 +26,36 @@ All UI text is in Spanish. No i18n library — strings are hardcoded.
 
 **Auth** (`src/auth/`): JWT stored in localStorage under `datil_token`. `AuthProvider` validates the token on mount and fetches the user from `/auth/me`. `ProtectedRoute` wraps dashboard routes and redirects unauthenticated users to `/login?redirect=`.
 
-**Routing** (`src/routes/router.tsx`): Uses `createBrowserRouter`. All page components are lazy-loaded with `React.lazy` + `Suspense`. Pages are placeholder `<div>`s — real UI is implemented from Figma designs.
+**Routing** (`src/routes/router.tsx`): Uses `createBrowserRouter`. All page components are lazy-loaded with `React.lazy` + `Suspense`. Unimplemented pages remain placeholder `<div>`s until their UI is built from Figma designs.
+
+**Dashboard page structure**: Simple pages live as a single file at `routes/dashboard/PageName.tsx`. Once a page grows multiple concerns (sub-components, a form schema, non-trivial state), promote it to a module folder:
+
+```
+routes/dashboard/<page-name>/
+  PageName.tsx         — orchestration only (data fetching + layout)
+  schema.ts            — Zod schema + inferred form type (for pages with forms)
+  types.ts             — module-local types
+  constants.ts         — module-local constants
+  useXxx.ts            — hooks that own state + handlers
+  draft.ts / utils.ts  — pure helpers
+  components/
+    <SubComponent>.tsx — page-specific sub-components
+    <Page>Skeleton.tsx — loading skeleton, colocated with the page
+```
+
+Rules for this layout:
+
+- **Never import from a parent page.** Sub-components pull form types from `schema.ts`, not from the page file — this prevents upward dependencies.
+- **Extract non-trivial state into a hook.** If the page has more than a couple of `useState` hooks + handlers, move them into `useXxx.ts` so the page body stays focused on rendering.
+- **Colocate page-specific pieces; share only what's reused.** Components used by one page belong under that page's `components/`. Only truly shared pieces go in `routes/dashboard/components/`.
+- **Update `router.tsx`** to point at the new `<page-name>/PageName.tsx` path when promoting a page to a module.
+
+**Shared dashboard primitives** (`routes/dashboard/components/`):
+
+- `PageHeader` — `{ title, subtitle?, actions?, className? }`. Use on every dashboard page for consistent header styling.
+- `ErrorState` — `{ message, onRetry, retryLabel?, className? }`. Wrap in a `<Card>` for in-card errors, or in a centered container for full-page errors.
+
+Reference implementations: `routes/dashboard/configuracion/` and `routes/dashboard/schedule/`.
 
 ### Path Alias
 
