@@ -5,12 +5,26 @@ import { apiClient } from '@/api/client';
 import { ENDPOINTS } from '@/api/endpoints';
 import type { User } from '@/api/types/auth';
 
+// TODO(auth): dev-only bypass so the dashboard is reachable without a backend.
+// Remove before shipping — or gate on `import.meta.env.VITE_AUTH_BYPASS === 'true'`.
+const DEV_BYPASS_AUTH = import.meta.env.DEV;
+const DEV_USER: User = {
+  id: 'dev-user',
+  email: 'jane@ardenstudio',
+  name: 'Lupita Urias',
+  business_id: 'dev-business',
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setTokenState] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(DEV_BYPASS_AUTH ? DEV_USER : null);
+  const [token, setTokenState] = useState<string | null>(
+    DEV_BYPASS_AUTH ? 'dev-token' : null,
+  );
+  const [isLoading, setIsLoading] = useState(!DEV_BYPASS_AUTH);
 
   useEffect(() => {
+    if (DEV_BYPASS_AUTH) return;
+
     const storedToken = getToken();
     if (!storedToken || isTokenExpired(storedToken)) {
       removeToken();
@@ -39,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    if (DEV_BYPASS_AUTH) return;
     removeToken();
     setTokenState(null);
     setUser(null);

@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { ProtectedRoute } from '@/auth/ProtectedRoute';
 
@@ -13,8 +13,7 @@ const CategoriesPage = lazy(() => import('./dashboard/CategoriesPage'));
 const AppointmentsPage = lazy(() => import('./dashboard/AppointmentsPage'));
 const SchedulePage = lazy(() => import('./dashboard/SchedulePage'));
 const PersonalTimePage = lazy(() => import('./dashboard/PersonalTimePage'));
-const BusinessProfilePage = lazy(() => import('./dashboard/BusinessProfilePage'));
-const CalendarSyncPage = lazy(() => import('./dashboard/CalendarSyncPage'));
+const ConfiguracionPage = lazy(() => import('./dashboard/ConfiguracionPage'));
 const BankDetailsPage = lazy(() => import('./dashboard/BankDetailsPage'));
 
 const BookingLayout = lazy(() => import('./booking/BookingLayout'));
@@ -112,20 +111,20 @@ export const router = createBrowserRouter([
             ),
           },
           {
-            path: 'perfil',
+            path: 'configuracion',
             element: (
               <SuspenseWrapper>
-                <BusinessProfilePage />
+                <ConfiguracionPage />
               </SuspenseWrapper>
             ),
           },
           {
+            path: 'perfil',
+            element: <Navigate to="/dashboard/configuracion" replace />,
+          },
+          {
             path: 'calendario',
-            element: (
-              <SuspenseWrapper>
-                <CalendarSyncPage />
-              </SuspenseWrapper>
-            ),
+            element: <Navigate to="/dashboard/configuracion" replace />,
           },
           {
             path: 'banco',

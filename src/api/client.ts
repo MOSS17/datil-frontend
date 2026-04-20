@@ -1,4 +1,5 @@
 import { getToken, removeToken } from '@/auth/token';
+import { resolveMock } from '@/api/mocks/router';
 
 export class ApiError extends Error {
   status: number;
@@ -22,6 +23,12 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
 export async function apiClient<T>(endpoint: string, options: ApiOptions = {}): Promise<T> {
   const { method = 'GET', body, headers: customHeaders = {} } = options;
+
+  // TODO(mocks): remove once the backend is wired up.
+  const mocked = resolveMock(method, endpoint, body);
+  if (mocked) {
+    return mocked as Promise<T>;
+  }
 
   const headers: Record<string, string> = { ...customHeaders };
 

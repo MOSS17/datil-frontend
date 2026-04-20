@@ -1,1 +1,41 @@
 @import "tailwindcss";
+@config "../tailwind.config.js";
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-optical-sizing: auto;
+  }
+
+  body {
+    font-family: "DM Sans", system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 20px;
+    color: #5f5857;
+    background-color: #fcfcfa;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: Spectral, Georgia, serif;
+    font-weight: 400;
+    color: #372e2d;
+  }
+}
+
+/* Explicit color utilities for `border-{name}` keys that Tailwind v4 +
+   legacy @config skips (these get scanned but never emit CSS from the
+   nested `border: { … }` config). Values mirror the Figma tokens. */
+@layer utilities {
+  .border-default       { border-color: #e2dbcf; }
+  .border-subtle        { border-color: #f0ede6; }
+  .border-strong        { border-color: #160f03; }
+  .border-control       { border-color: #e8e5e0; }
+  .border-accent-subtle { border-color: #e5eef3; }
+  .border-error-subtle  { border-color: #efd2d2; }
+  .border-info          { border-color: #62899b; }
+  .border-info-subtle   { border-color: #e5eef3; }
+  .border-success-subtle{ border-color: #e5e8e2; }
+  .border-warning-subtle{ border-color: #f7ede1; }
+}
