@@ -15,6 +15,7 @@ import {
 } from '@/api/hooks/useServices';
 import { ErrorState } from '../components/ErrorState';
 import { AgregarComplementos } from './components/AgregarComplementos';
+import { ExtraInfoAside } from './components/ExtraInfoAside';
 import { ServiceForm } from './components/ServiceForm';
 import { serviceFormSchema, type ServiceFormValues } from './schema';
 import {
@@ -24,12 +25,40 @@ import {
 } from './serviceFormMapping';
 
 type Mode = 'create' | 'edit';
+type Kind = 'service' | 'extra';
 
 interface ServiceFormPageProps {
   mode: Mode;
+  kind?: Kind;
 }
 
-export default function ServiceFormPage({ mode }: ServiceFormPageProps) {
+const COPY: Record<Kind, {
+  backPath: string;
+  createTitle: string;
+  editTitle: string;
+  createCta: string;
+  confirmDelete: string;
+}> = {
+  service: {
+    backPath: '/dashboard/servicios',
+    createTitle: 'Nuevo Servicio',
+    editTitle: 'Editar Servicio',
+    createCta: 'Crear Servicio',
+    confirmDelete: '¿Seguro que quieres eliminar este servicio?',
+  },
+  extra: {
+    backPath: '/dashboard/servicios?tab=complementos',
+    createTitle: 'Nuevo Complemento',
+    editTitle: 'Editar Complemento',
+    createCta: 'Crear Complemento',
+    confirmDelete: '¿Seguro que quieres eliminar este complemento?',
+  },
+};
+
+export default function ServiceFormPage({ mode, kind = 'service' }: ServiceFormPageProps) {
+  const copy = COPY[kind];
+  const isExtra = kind === 'extra';
+
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
   const [search] = useSearchParams();
@@ -46,7 +75,7 @@ export default function ServiceFormPage({ mode }: ServiceFormPageProps) {
 
   const methods = useForm<ServiceFormValues>({
     resolver: zodResolver(serviceFormSchema),
-    defaultValues: emptyFormValues(initialCategory),
+    defaultValues: emptyFormValues(initialCategory, kind),
   });
 
   useEffect(() => {
@@ -59,24 +88,24 @@ export default function ServiceFormPage({ mode }: ServiceFormPageProps) {
 
   const onSubmit = methods.handleSubmit(async (values) => {
     if (mode === 'create') {
-      await createService.mutateAsync(formToCreateRequest(values, false));
+      await createService.mutateAsync(formToCreateRequest(values, isExtra));
       // TODO: persist values.extrasGroupIds once the service-extras hooks land.
-      navigate('/dashboard/servicios');
+      navigate(copy.backPath);
     } else {
       await updateService.mutateAsync({
         id: serviceId,
-        data: formToCreateRequest(values, serviceQuery.data?.is_extra ?? false),
+        data: formToCreateRequest(values, serviceQuery.data?.is_extra ?? isExtra),
       });
-      navigate('/dashboard/servicios');
+      navigate(copy.backPath);
     }
   });
 
   const onDelete = async () => {
     if (mode !== 'edit') return;
-    const confirmed = window.confirm('¿Seguro que quieres eliminar este servicio?');
+    const confirmed = window.confirm(copy.confirmDelete);
     if (!confirmed) return;
     await deleteService.mutateAsync(serviceId);
-    navigate('/dashboard/servicios');
+    navigate(copy.backPath);
   };
 
   const isLoading =
@@ -88,7 +117,11 @@ export default function ServiceFormPage({ mode }: ServiceFormPageProps) {
       <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-700 px-600 py-600 md:px-1000 md:py-800">
         <Card>
           <ErrorState
-            message="No se pudo cargar la información del servicio."
+            message={
+              isExtra
+                ? 'No se pudo cargar la información del complemento.'
+                : 'No se pudo cargar la información del servicio.'
+            }
             onRetry={() => {
               categoriesQuery.refetch();
               if (mode === 'edit') serviceQuery.refetch();
@@ -111,7 +144,7 @@ export default function ServiceFormPage({ mode }: ServiceFormPageProps) {
           <div className="flex items-center justify-between gap-400">
             <button
               type="button"
-              onClick={() => navigate('/dashboard/servicios')}
+              onClick={() => navigate(copy.backPath)}
               className="inline-flex items-center gap-200 font-sans text-body-sm text-body hover:text-body-emphasis"
             >
               <ArrowLeft size={16} strokeWidth={1.75} aria-hidden />
@@ -128,7 +161,7 @@ export default function ServiceFormPage({ mode }: ServiceFormPageProps) {
           </div>
           <div className="flex flex-col gap-400 md:flex-row md:items-center md:justify-between">
             <h1 className="font-serif text-h4-mobile text-heading md:text-h4">
-              {mode === 'create' ? 'Nuevo Servicio' : 'Editar Servicio'}
+              {mode === 'create' ? copy.createTitle : copy.editTitle}
             </h1>
             <div className="hidden md:flex md:flex-wrap md:items-center md:gap-400">
               {mode === 'create' ? (
@@ -137,7 +170,7 @@ export default function ServiceFormPage({ mode }: ServiceFormPageProps) {
                   isLoading={submitBusy}
                   leftIcon={<Plus size={16} strokeWidth={1.75} aria-hidden />}
                 >
-                  Crear Servicio
+                  {copy.createCta}
                 </Button>
               ) : (
                 <>
@@ -173,9 +206,9 @@ export default function ServiceFormPage({ mode }: ServiceFormPageProps) {
         ) : (
           <>
             <div className="grid grid-cols-1 gap-700 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:gap-800">
-              <ServiceForm categories={categories} />
-              <div className="border-t border-subtle pt-600 md:border-0 md:pt-0">
-                <AgregarComplementos extrasGroups={categories} />
+              <ServiceForm categories={categories} kind={kind} />
+              <div className={isExtra ? '' : 'border-t border-subtle pt-600 md:border-0 md:pt-0'}>
+                {isExtra ? <ExtraInfoAside /> : <AgregarComplementos extrasGroups={categories} />}
               </div>
             </div>
             <div className="flex flex-col gap-300 md:hidden">
@@ -186,7 +219,7 @@ export default function ServiceFormPage({ mode }: ServiceFormPageProps) {
                   isLoading={submitBusy}
                   leftIcon={<Plus size={16} strokeWidth={1.75} aria-hidden />}
                 >
-                  Crear Servicio
+                  {copy.createCta}
                 </Button>
               ) : (
                 <>

@@ -4,15 +4,18 @@ import { Checkbox } from '@/components/ui/Checkbox';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
-import { DURATION_OPTIONS } from '../serviceFormMapping';
+import { DURATION_OPTIONS, EXTRA_DURATION_OPTIONS } from '../serviceFormMapping';
 import type { ServiceFormValues } from '../schema';
 import { PriceTypeToggle } from './PriceTypeToggle';
 
 interface ServiceFormProps {
   categories: Category[];
+  kind?: 'service' | 'extra';
 }
 
-export function ServiceForm({ categories }: ServiceFormProps) {
+export function ServiceForm({ categories, kind = 'service' }: ServiceFormProps) {
+  const isExtra = kind === 'extra';
+  const durationOptions = isExtra ? EXTRA_DURATION_OPTIONS : DURATION_OPTIONS;
   const {
     register,
     control,
@@ -92,7 +95,7 @@ export function ServiceForm({ categories }: ServiceFormProps) {
               <Select
                 label="Duración"
                 error={errors.durationMinutes?.message}
-                options={DURATION_OPTIONS.map((o) => ({
+                options={durationOptions.map((o) => ({
                   value: String(o.value),
                   label: o.label,
                 }))}
@@ -140,7 +143,7 @@ export function ServiceForm({ categories }: ServiceFormProps) {
               <Select
                 label="Duración"
                 error={errors.durationMinutes?.message}
-                options={DURATION_OPTIONS.map((o) => ({
+                options={durationOptions.map((o) => ({
                   value: String(o.value),
                   label: o.label,
                 }))}
@@ -154,39 +157,41 @@ export function ServiceForm({ categories }: ServiceFormProps) {
         </>
       )}
 
-      <div className="flex flex-col gap-200">
-        <Controller
-          name="requireAdvance"
-          control={control}
-          render={({ field }) => (
-            <Checkbox
-              label="Pedir Anticipo"
-              checked={field.value}
-              onChange={(e) => field.onChange(e.target.checked)}
-              onBlur={field.onBlur}
-              name={field.name}
-            />
+      {!isExtra && (
+        <div className="flex flex-col gap-200">
+          <Controller
+            name="requireAdvance"
+            control={control}
+            render={({ field }) => (
+              <Checkbox
+                label="Pedir Anticipo"
+                checked={field.value}
+                onChange={(e) => field.onChange(e.target.checked)}
+                onBlur={field.onBlur}
+                name={field.name}
+              />
+            )}
+          />
+          {requireAdvance && (
+            <>
+              <p className="font-sans text-caption text-muted">
+                A tus clientes se les pedirá que suban un comprobante de su pago.
+              </p>
+              <Input
+                label="Cantidad de Anticipo"
+                type="number"
+                min={0}
+                step="0.01"
+                placeholder="0.00"
+                leftAddon={<span className="text-muted">$</span>}
+                error={errors.advanceAmount?.message}
+                containerClassName="mt-200"
+                {...register('advanceAmount', { valueAsNumber: true })}
+              />
+            </>
           )}
-        />
-        {requireAdvance && (
-          <>
-            <p className="font-sans text-caption text-muted">
-              A tus clientes se les pedirá que suban un comprobante de su pago.
-            </p>
-            <Input
-              label="Cantidad de Anticipo"
-              type="number"
-              min={0}
-              step="0.01"
-              placeholder="0.00"
-              leftAddon={<span className="text-muted">$</span>}
-              error={errors.advanceAmount?.message}
-              containerClassName="mt-200"
-              {...register('advanceAmount', { valueAsNumber: true })}
-            />
-          </>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

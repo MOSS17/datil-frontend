@@ -15,6 +15,11 @@ export const DURATION_OPTIONS: { value: number; label: string }[] = [
   { value: 360, label: '6 hr' },
 ];
 
+export const EXTRA_DURATION_OPTIONS: { value: number; label: string }[] = [
+  { value: 0, label: 'No Aumenta Duración' },
+  ...DURATION_OPTIONS,
+];
+
 const CENTS = 100;
 
 export function formToCreateRequest(
@@ -62,7 +67,10 @@ export function serviceToFormValues(service: Service): ServiceFormValues {
   };
 }
 
-export function emptyFormValues(categoryId: string): ServiceFormValues {
+export function emptyFormValues(
+  categoryId: string,
+  kind: 'service' | 'extra' = 'service',
+): ServiceFormValues {
   return {
     categoryId,
     name: '',
@@ -70,7 +78,7 @@ export function emptyFormValues(categoryId: string): ServiceFormValues {
     priceType: 'fijo',
     price: 0,
     priceMax: undefined,
-    durationMinutes: 60,
+    durationMinutes: kind === 'extra' ? 0 : 60,
     requireAdvance: false,
     advanceAmount: undefined,
     extrasGroupIds: [],

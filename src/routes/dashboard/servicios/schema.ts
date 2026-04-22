@@ -20,7 +20,7 @@ export const serviceFormSchema = z
       .number({ error: 'Ingresa un precio máximo' })
       .min(0, 'El precio no puede ser negativo')
       .optional(),
-    durationMinutes: z.number().int().positive('Selecciona una duración'),
+    durationMinutes: z.number().int().nonnegative('Selecciona una duración'),
     requireAdvance: z.boolean(),
     advanceAmount: z.number().min(0, 'El anticipo no puede ser negativo').optional(),
     extrasGroupIds: z.array(z.string()),

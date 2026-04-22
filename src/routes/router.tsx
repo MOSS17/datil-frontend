@@ -96,6 +96,22 @@ export const router = createBrowserRouter([
             ),
           },
           {
+            path: 'servicios/complementos/nuevo',
+            element: (
+              <SuspenseWrapper>
+                <ServiceFormPage mode="create" kind="extra" />
+              </SuspenseWrapper>
+            ),
+          },
+          {
+            path: 'servicios/complementos/:id/editar',
+            element: (
+              <SuspenseWrapper>
+                <ServiceFormPage mode="edit" kind="extra" />
+              </SuspenseWrapper>
+            ),
+          },
+          {
             path: 'categorias',
             element: (
               <SuspenseWrapper>

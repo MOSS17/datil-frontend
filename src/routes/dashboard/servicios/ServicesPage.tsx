@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useCategories, useCreateCategory } from '@/api/hooks/useCategories';
@@ -29,7 +29,22 @@ const TAB_COPY: Record<ServicesTab, { subtitle: string; createLabel: string }> =
 
 export default function ServicesPage() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState<ServicesTab>('principales');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab: ServicesTab = searchParams.get('tab') === 'complementos' ? 'complementos' : 'principales';
+  const setTab = useCallback(
+    (next: ServicesTab) => {
+      setSearchParams(
+        (prev) => {
+          const params = new URLSearchParams(prev);
+          if (next === 'principales') params.delete('tab');
+          else params.set('tab', next);
+          return params;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
   const [filterCategoryId, setFilterCategoryId] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -125,12 +140,18 @@ export default function ServicesPage() {
                     key={group.category.id}
                     group={group}
                     isExtras={isExtras}
-                    onAddService={(categoryId) =>
-                      navigate(`/dashboard/servicios/nuevo?category=${categoryId}`)
-                    }
-                    onEditService={(serviceId) =>
-                      navigate(`/dashboard/servicios/${serviceId}/editar`)
-                    }
+                    onAddService={(categoryId) => {
+                      const base = isExtras
+                        ? '/dashboard/servicios/complementos/nuevo'
+                        : '/dashboard/servicios/nuevo';
+                      navigate(`${base}?category=${categoryId}`);
+                    }}
+                    onEditService={(serviceId) => {
+                      const base = isExtras
+                        ? `/dashboard/servicios/complementos/${serviceId}/editar`
+                        : `/dashboard/servicios/${serviceId}/editar`;
+                      navigate(base);
+                    }}
                   />
                 ))}
               </div>
