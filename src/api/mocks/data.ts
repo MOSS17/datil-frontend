@@ -66,6 +66,7 @@ export const mockServices: Service[] = [
     duration_minutes: 60,
     advance_payment_amount: 30000,
     is_extra: false,
+    is_active: true,
   },
   {
     id: 'srv-bride',
@@ -77,6 +78,7 @@ export const mockServices: Service[] = [
     duration_minutes: 120,
     advance_payment_amount: 100000,
     is_extra: false,
+    is_active: true,
   },
   {
     id: 'srv-editorial',
@@ -88,6 +90,7 @@ export const mockServices: Service[] = [
     duration_minutes: 90,
     advance_payment_amount: 50000,
     is_extra: false,
+    is_active: true,
   },
   {
     id: 'srv-updo',
@@ -99,6 +102,7 @@ export const mockServices: Service[] = [
     duration_minutes: 75,
     advance_payment_amount: 30000,
     is_extra: false,
+    is_active: true,
   },
   {
     id: 'srv-blowout',
@@ -110,6 +114,7 @@ export const mockServices: Service[] = [
     duration_minutes: 45,
     advance_payment_amount: 0,
     is_extra: false,
+    is_active: true,
   },
   {
     id: 'srv-lashes',
@@ -121,6 +126,7 @@ export const mockServices: Service[] = [
     duration_minutes: 15,
     advance_payment_amount: 0,
     is_extra: true,
+    is_active: true,
   },
   {
     id: 'srv-airbrush',
@@ -132,6 +138,7 @@ export const mockServices: Service[] = [
     duration_minutes: 0,
     advance_payment_amount: 0,
     is_extra: true,
+    is_active: true,
   },
 ];
 

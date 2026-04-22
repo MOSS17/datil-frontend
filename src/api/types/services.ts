@@ -8,6 +8,7 @@ export interface Service {
   duration_minutes: number;
   advance_payment_amount: number;
   is_extra: boolean;
+  is_active: boolean;
   extras?: Service[];
 }
 
@@ -20,6 +21,7 @@ export interface CreateServiceRequest {
   duration_minutes: number;
   advance_payment_amount: number;
   is_extra: boolean;
+  is_active: boolean;
 }
 
 export interface UpdateServiceRequest extends Partial<CreateServiceRequest> {}
