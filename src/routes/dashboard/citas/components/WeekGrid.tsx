@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import type { Appointment } from '@/api/types/appointments';
 import type { PersonalTime } from '@/api/types/schedule';
@@ -6,10 +6,17 @@ import {
   addDays,
   DAY_SHORT_ES,
   formatHourLabel,
+  formatTimeShort,
   isSameDay,
 } from '../utils';
 import { AppointmentCard } from './AppointmentCard';
 import { PersonalTimeCard } from './PersonalTimeCard';
+
+export interface RangeSelection {
+  day: Date;
+  startTime: string;
+  endTime: string;
+}
 
 interface WeekGridProps {
   weekStart: Date;
@@ -18,22 +25,24 @@ interface WeekGridProps {
   today?: Date;
   startHour?: number;
   endHour?: number;
+  onSelectRange?: (range: RangeSelection) => void;
 }
 
 const ROW_HEIGHT_PX = 88;
+const SNAP_MINUTES = 15;
 
-interface PositionedAppointment {
-  appointment: Appointment;
-  topPx: number;
-  heightPx: number;
-  dayIndex: number;
+function minutesToHHMM(startHour: number, minutesSinceStart: number): string {
+  const total = startHour * 60 + Math.max(0, minutesSinceStart);
+  const hh = Math.floor(total / 60);
+  const mm = total % 60;
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
 }
 
-interface PositionedPersonalTime {
-  personalTime: PersonalTime;
-  topPx: number;
-  heightPx: number;
+interface DragState {
   dayIndex: number;
+  startMinutes: number;
+  endMinutes: number;
+  moved: boolean;
 }
 
 export function WeekGrid({
@@ -43,6 +52,7 @@ export function WeekGrid({
   today,
   startHour = 8,
   endHour = 15,
+  onSelectRange,
 }: WeekGridProps) {
   const hours = useMemo(
     () => Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i),
@@ -53,11 +63,86 @@ export function WeekGrid({
     [weekStart],
   );
 
-  const minutesSinceStart = (d: Date) => (d.getHours() - startHour) * 60 + d.getMinutes();
-  const pxPerMinute = ROW_HEIGHT_PX / 60;
+  const dayColRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const [drag, setDrag] = useState<DragState | null>(null);
+  const dragRef = useRef<DragState | null>(null);
+  dragRef.current = drag;
 
-  const positionedAppointments = useMemo<PositionedAppointment[]>(() => {
-    const out: PositionedAppointment[] = [];
+  const pxPerMinute = ROW_HEIGHT_PX / 60;
+  const totalMinutes = (endHour - startHour + 1) * 60;
+  const minutesSinceStart = (d: Date) => (d.getHours() - startHour) * 60 + d.getMinutes();
+
+  const yToSnappedMinutes = (y: number): number => {
+    const raw = y / pxPerMinute;
+    const snapped = Math.round(raw / SNAP_MINUTES) * SNAP_MINUTES;
+    return Math.max(0, Math.min(totalMinutes, snapped));
+  };
+
+  useEffect(() => {
+    if (!drag) return;
+
+    const handleMove = (e: PointerEvent) => {
+      const current = dragRef.current;
+      if (!current) return;
+      const cell = dayColRefs.current[current.dayIndex];
+      if (!cell) return;
+      const rect = cell.getBoundingClientRect();
+      const y = e.clientY - rect.top;
+      const endMinutes = yToSnappedMinutes(y);
+      if (endMinutes !== current.endMinutes) {
+        setDrag({ ...current, endMinutes, moved: true });
+      }
+    };
+
+    const handleUp = () => {
+      const current = dragRef.current;
+      if (!current) return;
+      let startM = Math.min(current.startMinutes, current.endMinutes);
+      let endM = Math.max(current.startMinutes, current.endMinutes);
+      if (!current.moved || endM - startM < SNAP_MINUTES) {
+        endM = Math.min(totalMinutes, startM + 60);
+      }
+      if (endM <= startM) endM = startM + SNAP_MINUTES;
+
+      onSelectRange?.({
+        day: days[current.dayIndex],
+        startTime: minutesToHHMM(startHour, startM),
+        endTime: minutesToHHMM(startHour, endM),
+      });
+      setDrag(null);
+    };
+
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+    window.addEventListener('pointercancel', () => setDrag(null));
+    return () => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+    };
+  }, [drag, days, onSelectRange, pxPerMinute, startHour, totalMinutes]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>, dayIndex: number) => {
+    if (e.button !== 0) return;
+    const cell = dayColRefs.current[dayIndex];
+    if (!cell) return;
+    const rect = cell.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const startMinutes = yToSnappedMinutes(y);
+    setDrag({
+      dayIndex,
+      startMinutes,
+      endMinutes: startMinutes,
+      moved: false,
+    });
+  };
+
+  const positionedAppointments = useMemo(() => {
+    const out: Array<{
+      appointment: Appointment;
+      topPx: number;
+      heightPx: number;
+      dayIndex: number;
+    }> = [];
     for (const appt of appointments) {
       const start = new Date(appt.start_time);
       const end = new Date(appt.end_time);
@@ -73,8 +158,13 @@ export function WeekGrid({
     return out;
   }, [appointments, days, pxPerMinute, startHour]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const positionedPersonalTimes = useMemo<PositionedPersonalTime[]>(() => {
-    const out: PositionedPersonalTime[] = [];
+  const positionedPersonalTimes = useMemo(() => {
+    const out: Array<{
+      personalTime: PersonalTime;
+      topPx: number;
+      heightPx: number;
+      dayIndex: number;
+    }> = [];
     for (const pt of personalTimes) {
       if (!pt.date) continue;
       const dayIndex = days.findIndex(
@@ -123,7 +213,9 @@ export function WeekGrid({
                 isToday && 'bg-surface-secondary-subtle',
               )}
             >
-              <span className="font-sans text-body-sm text-muted">{DAY_SHORT_ES[d.getDay()]}</span>
+              <span className="font-sans text-body-sm text-muted">
+                {DAY_SHORT_ES[d.getDay()]}
+              </span>
               <span
                 className={cn(
                   'inline-flex h-700 w-700 items-center justify-center font-sans text-body-sm',
@@ -157,29 +249,69 @@ export function WeekGrid({
 
         {days.map((d, dayIdx) => {
           const isToday = today ? isSameDay(d, today) : false;
+          const dragOnThisDay = drag && drag.dayIndex === dayIdx;
+          const dragTop = dragOnThisDay
+            ? Math.min(drag.startMinutes, drag.endMinutes) * pxPerMinute
+            : 0;
+          const dragHeight = dragOnThisDay
+            ? Math.max(
+                SNAP_MINUTES * pxPerMinute,
+                Math.abs(drag.endMinutes - drag.startMinutes) * pxPerMinute,
+              )
+            : 0;
+          const dragStartLabel = dragOnThisDay
+            ? formatTimeShort(makeDateAtMinutes(startHour, Math.min(drag.startMinutes, drag.endMinutes)))
+            : '';
+          const dragEndLabel = dragOnThisDay
+            ? formatTimeShort(
+                makeDateAtMinutes(
+                  startHour,
+                  Math.max(drag.startMinutes, drag.endMinutes) ||
+                    Math.min(drag.startMinutes, drag.endMinutes) + SNAP_MINUTES,
+                ),
+              )
+            : '';
+
           return (
             <div
               key={dayIdx}
+              ref={(el) => {
+                dayColRefs.current[dayIdx] = el;
+              }}
+              onPointerDown={(e) => handlePointerDown(e, dayIdx)}
               className={cn(
-                'relative border-l border-subtle',
+                'relative cursor-crosshair border-l border-subtle select-none touch-none',
                 isToday && 'bg-surface-secondary-subtle',
               )}
             >
               {hours.map((_, hIdx) => (
                 <div
                   key={hIdx}
-                  className="border-b border-subtle"
+                  className="border-b border-subtle transition-colors hover:bg-surface-accent-subtle"
                   style={{ height: ROW_HEIGHT_PX }}
                 />
               ))}
+
+              {dragOnThisDay && drag.moved && (
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 flex items-start rounded-sm border border-accent bg-surface-accent-subtle/80 px-300 py-100"
+                  style={{ top: dragTop, height: dragHeight }}
+                >
+                  <span className="font-sans text-caption font-medium text-accent">
+                    {dragStartLabel} – {dragEndLabel}
+                  </span>
+                </div>
+              )}
 
               {positionedPersonalTimes
                 .filter((p) => p.dayIndex === dayIdx)
                 .map((p) => (
                   <div
                     key={p.personalTime.id}
-                    className="absolute inset-x-0"
+                    className="absolute inset-x-0 cursor-default"
                     style={{ top: p.topPx, height: p.heightPx }}
+                    onPointerDown={(e) => e.stopPropagation()}
                   >
                     <PersonalTimeCard personalTime={p.personalTime} className="h-full" />
                   </div>
@@ -190,8 +322,9 @@ export function WeekGrid({
                 .map((a) => (
                   <div
                     key={a.appointment.id}
-                    className="absolute inset-x-0"
+                    className="absolute inset-x-0 cursor-default"
                     style={{ top: a.topPx, height: a.heightPx }}
+                    onPointerDown={(e) => e.stopPropagation()}
                   >
                     <AppointmentCard appointment={a.appointment} className="h-full" />
                   </div>
@@ -202,4 +335,11 @@ export function WeekGrid({
       </div>
     </div>
   );
+}
+
+function makeDateAtMinutes(startHour: number, minutes: number): Date {
+  const total = startHour * 60 + minutes;
+  const d = new Date();
+  d.setHours(Math.floor(total / 60), total % 60, 0, 0);
+  return d;
 }

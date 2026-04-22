@@ -14,6 +14,9 @@ interface NuevoBloqueDrawerProps {
   onClose: () => void;
   services: Service[];
   defaultDate?: string;
+  defaultStartTime?: string;
+  defaultEndTime?: string;
+  formKey?: string;
   isSubmittingCita?: boolean;
   isSubmittingTiempo?: boolean;
   onSubmitCita: (values: CitaFormValues) => void | Promise<void>;
@@ -28,6 +31,9 @@ export function NuevoBloqueDrawer({
   onClose,
   services,
   defaultDate,
+  defaultStartTime,
+  defaultEndTime,
+  formKey,
   isSubmittingCita,
   isSubmittingTiempo,
   onSubmitCita,
@@ -52,8 +58,11 @@ export function NuevoBloqueDrawer({
         <hr className="border-t border-subtle" aria-hidden />
         {tab === 'cita' ? (
           <CitaForm
+            key={`cita-${formKey ?? ''}`}
             services={services}
             defaultDate={defaultDate}
+            defaultStartTime={defaultStartTime}
+            defaultEndTime={defaultEndTime}
             isSubmitting={isSubmittingCita}
             outsideWorkingHours={citaOutsideHours}
             conflictMessage={citaConflictMessage}
@@ -61,7 +70,10 @@ export function NuevoBloqueDrawer({
           />
         ) : (
           <TiempoPersonalForm
+            key={`tiempo-${formKey ?? ''}`}
             defaultDate={defaultDate}
+            defaultStartTime={defaultStartTime}
+            defaultEndTime={defaultEndTime}
             infoMessage={tiempoInfoMessage}
             isSubmitting={isSubmittingTiempo}
             onSubmit={onSubmitTiempo}

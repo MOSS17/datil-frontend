@@ -7,7 +7,7 @@ import { useMyBusiness } from '@/api/hooks/useBusiness';
 import { useServices } from '@/api/hooks/useServices';
 import { CalendarHeader } from './components/CalendarHeader';
 import { MobileCalendarTopBar } from './components/MobileCalendarTopBar';
-import { WeekGrid } from './components/WeekGrid';
+import { WeekGrid, type RangeSelection } from './components/WeekGrid';
 import { DayView } from './components/DayView';
 import { NuevoBloqueDrawer } from './components/NuevoBloqueDrawer';
 import { CalendarioPageSkeleton } from './components/CalendarioPageSkeleton';
@@ -19,6 +19,11 @@ export default function CalendarioPage() {
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeekMon(new Date()));
   const [selectedDay, setSelectedDay] = useState<Date>(() => new Date());
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [prefill, setPrefill] = useState<{
+    date: string;
+    start_time: string;
+    end_time: string;
+  } | null>(null);
 
   const appointmentsQuery = useAppointments();
   const personalTimeQuery = usePersonalTime();
@@ -67,8 +72,22 @@ export default function CalendarioPage() {
     setWeekStart(startOfWeekMon(now));
     setSelectedDay(now);
   }, []);
-  const openDrawer = useCallback(() => setDrawerOpen(true), []);
-  const closeDrawer = useCallback(() => setDrawerOpen(false), []);
+  const openDrawer = useCallback(() => {
+    setPrefill(null);
+    setDrawerOpen(true);
+  }, []);
+  const closeDrawer = useCallback(() => {
+    setDrawerOpen(false);
+    setPrefill(null);
+  }, []);
+  const handleSelectRange = useCallback((range: RangeSelection) => {
+    setPrefill({
+      date: formatIsoDate(range.day),
+      start_time: range.startTime,
+      end_time: range.endTime,
+    });
+    setDrawerOpen(true);
+  }, []);
 
   const handleCitaSubmit = async (values: CitaFormValues) => {
     const businessId = businessQuery.data?.id;
@@ -148,6 +167,7 @@ export default function CalendarioPage() {
             appointments={weekAppointments}
             personalTimes={weekPersonalTimes}
             today={today}
+            onSelectRange={handleSelectRange}
           />
         </div>
         <div className="md:hidden">
@@ -162,6 +182,7 @@ export default function CalendarioPage() {
             appointments={weekAppointments}
             personalTimes={weekPersonalTimes}
             today={today}
+            onSelectRange={handleSelectRange}
           />
         </div>
       </section>
@@ -170,7 +191,12 @@ export default function CalendarioPage() {
         open={drawerOpen}
         onClose={closeDrawer}
         services={services}
-        defaultDate={defaultFormDate}
+        defaultDate={prefill?.date ?? defaultFormDate}
+        defaultStartTime={prefill?.start_time}
+        defaultEndTime={prefill?.end_time}
+        formKey={
+          prefill ? `${prefill.date}-${prefill.start_time}-${prefill.end_time}` : 'empty'
+        }
         isSubmittingCita={createBooking.isPending}
         isSubmittingTiempo={createPersonalTime.isPending}
         onSubmitCita={handleCitaSubmit}

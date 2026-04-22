@@ -1,10 +1,17 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import type { Appointment } from '@/api/types/appointments';
 import type { PersonalTime } from '@/api/types/schedule';
-import { addDays, DAY_SHORT_ES, formatHourLabel, isSameDay } from '../utils';
+import {
+  addDays,
+  DAY_SHORT_ES,
+  formatHourLabel,
+  formatTimeShort,
+  isSameDay,
+} from '../utils';
 import { AppointmentCard } from './AppointmentCard';
 import { PersonalTimeCard } from './PersonalTimeCard';
+import type { RangeSelection } from './WeekGrid';
 
 interface DayViewProps {
   weekStart: Date;
@@ -15,9 +22,31 @@ interface DayViewProps {
   today?: Date;
   startHour?: number;
   endHour?: number;
+  onSelectRange?: (range: RangeSelection) => void;
 }
 
 const ROW_HEIGHT_PX = 96;
+const SNAP_MINUTES = 15;
+
+function minutesToHHMM(startHour: number, minutesSinceStart: number): string {
+  const total = startHour * 60 + Math.max(0, minutesSinceStart);
+  const hh = Math.floor(total / 60);
+  const mm = total % 60;
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+}
+
+function makeDateAtMinutes(startHour: number, minutes: number): Date {
+  const total = startHour * 60 + minutes;
+  const d = new Date();
+  d.setHours(Math.floor(total / 60), total % 60, 0, 0);
+  return d;
+}
+
+interface DragState {
+  startMinutes: number;
+  endMinutes: number;
+  moved: boolean;
+}
 
 export function DayView({
   weekStart,
@@ -28,6 +57,7 @@ export function DayView({
   today,
   startHour = 8,
   endHour = 15,
+  onSelectRange,
 }: DayViewProps) {
   const hours = useMemo(
     () => Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i),
@@ -39,7 +69,65 @@ export function DayView({
   );
 
   const pxPerMinute = ROW_HEIGHT_PX / 60;
+  const totalMinutes = (endHour - startHour + 1) * 60;
   const minutesSinceStart = (d: Date) => (d.getHours() - startHour) * 60 + d.getMinutes();
+
+  const colRef = useRef<HTMLDivElement | null>(null);
+  const [drag, setDrag] = useState<DragState | null>(null);
+  const dragRef = useRef<DragState | null>(null);
+  dragRef.current = drag;
+
+  const yToSnappedMinutes = (y: number): number => {
+    const raw = y / pxPerMinute;
+    const snapped = Math.round(raw / SNAP_MINUTES) * SNAP_MINUTES;
+    return Math.max(0, Math.min(totalMinutes, snapped));
+  };
+
+  useEffect(() => {
+    if (!drag) return;
+    const handleMove = (e: PointerEvent) => {
+      const current = dragRef.current;
+      if (!current || !colRef.current) return;
+      const rect = colRef.current.getBoundingClientRect();
+      const y = e.clientY - rect.top;
+      const endMinutes = yToSnappedMinutes(y);
+      if (endMinutes !== current.endMinutes) {
+        setDrag({ ...current, endMinutes, moved: true });
+      }
+    };
+    const handleUp = () => {
+      const current = dragRef.current;
+      if (!current) return;
+      let startM = Math.min(current.startMinutes, current.endMinutes);
+      let endM = Math.max(current.startMinutes, current.endMinutes);
+      if (!current.moved || endM - startM < SNAP_MINUTES) {
+        endM = Math.min(totalMinutes, startM + 60);
+      }
+      if (endM <= startM) endM = startM + SNAP_MINUTES;
+      onSelectRange?.({
+        day: selectedDay,
+        startTime: minutesToHHMM(startHour, startM),
+        endTime: minutesToHHMM(startHour, endM),
+      });
+      setDrag(null);
+    };
+
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+    return () => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+    };
+  }, [drag, onSelectRange, pxPerMinute, selectedDay, startHour, totalMinutes]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    const rect = colRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const y = e.clientY - rect.top;
+    const startMinutes = yToSnappedMinutes(y);
+    setDrag({ startMinutes, endMinutes: startMinutes, moved: false });
+  };
 
   const dayAppointments = appointments.filter((a) =>
     isSameDay(new Date(a.start_time), selectedDay),
@@ -55,6 +143,14 @@ export function DayView({
       selectedDay.getDate() === d
     );
   });
+
+  const dragTop = drag ? Math.min(drag.startMinutes, drag.endMinutes) * pxPerMinute : 0;
+  const dragHeight = drag
+    ? Math.max(
+        SNAP_MINUTES * pxPerMinute,
+        Math.abs(drag.endMinutes - drag.startMinutes) * pxPerMinute,
+      )
+    : 0;
 
   return (
     <div className="flex flex-col gap-400">
@@ -109,22 +205,49 @@ export function DayView({
           ))}
         </div>
 
-        <div className="relative border-l border-subtle">
+        <div
+          ref={colRef}
+          onPointerDown={handlePointerDown}
+          className="relative cursor-crosshair border-l border-subtle select-none touch-none"
+        >
           {hours.map((_, i) => (
             <div
               key={i}
-              className="border-b border-subtle"
+              className="border-b border-subtle transition-colors hover:bg-surface-accent-subtle"
               style={{ height: ROW_HEIGHT_PX }}
             />
           ))}
+
+          {drag && drag.moved && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 flex items-start rounded-sm border border-accent bg-surface-accent-subtle/80 px-300 py-100"
+              style={{ top: dragTop, height: dragHeight }}
+            >
+              <span className="font-sans text-caption font-medium text-accent">
+                {formatTimeShort(
+                  makeDateAtMinutes(startHour, Math.min(drag.startMinutes, drag.endMinutes)),
+                )}{' '}
+                –{' '}
+                {formatTimeShort(
+                  makeDateAtMinutes(
+                    startHour,
+                    Math.max(drag.startMinutes, drag.endMinutes) ||
+                      Math.min(drag.startMinutes, drag.endMinutes) + SNAP_MINUTES,
+                  ),
+                )}
+              </span>
+            </div>
+          )}
 
           {dayPersonalTimes.map((p) => {
             if (!p.start_time || !p.end_time) {
               return (
                 <div
                   key={p.id}
-                  className="absolute inset-x-0"
+                  className="absolute inset-x-0 cursor-default"
                   style={{ top: 0, height: hours.length * ROW_HEIGHT_PX }}
+                  onPointerDown={(e) => e.stopPropagation()}
                 >
                   <PersonalTimeCard personalTime={p} className="h-full" />
                 </div>
@@ -140,8 +263,9 @@ export function DayView({
             return (
               <div
                 key={p.id}
-                className="absolute inset-x-0"
+                className="absolute inset-x-0 cursor-default"
                 style={{ top: topPx, height: heightPx }}
+                onPointerDown={(e) => e.stopPropagation()}
               >
                 <PersonalTimeCard personalTime={p} className="h-full" />
               </div>
@@ -159,8 +283,9 @@ export function DayView({
             return (
               <div
                 key={a.id}
-                className="absolute inset-x-0"
+                className="absolute inset-x-0 cursor-default"
                 style={{ top: topPx, height: heightPx }}
+                onPointerDown={(e) => e.stopPropagation()}
               >
                 <AppointmentCard appointment={a} className="h-full" />
               </div>

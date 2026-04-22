@@ -11,6 +11,8 @@ import { InfoBanner } from './InfoBanner';
 
 interface TiempoPersonalFormProps {
   defaultDate?: string;
+  defaultStartTime?: string;
+  defaultEndTime?: string;
   infoMessage?: string | null;
   isSubmitting?: boolean;
   onSubmit: (values: TiempoPersonalFormValues) => void | Promise<void>;
@@ -24,6 +26,8 @@ const DURATION_OPTIONS = [
 
 export function TiempoPersonalForm({
   defaultDate = '',
+  defaultStartTime,
+  defaultEndTime,
   infoMessage,
   isSubmitting,
   onSubmit,
@@ -38,8 +42,8 @@ export function TiempoPersonalForm({
     defaultValues: {
       type: PERSONAL_TIME_TYPE.HOURS,
       date: defaultDate,
-      start_time: '10:00',
-      end_time: '11:00',
+      start_time: defaultStartTime ?? '10:00',
+      end_time: defaultEndTime ?? '11:00',
     },
   });
 

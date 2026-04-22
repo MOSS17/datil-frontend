@@ -13,6 +13,8 @@ import { InfoBanner } from './InfoBanner';
 interface CitaFormProps {
   services: Service[];
   defaultDate?: string;
+  defaultStartTime?: string;
+  defaultEndTime?: string;
   outsideWorkingHours?: boolean;
   conflictMessage?: string | null;
   isSubmitting?: boolean;
@@ -22,6 +24,8 @@ interface CitaFormProps {
 export function CitaForm({
   services,
   defaultDate = '',
+  defaultStartTime = '',
+  defaultEndTime = '',
   outsideWorkingHours,
   conflictMessage,
   isSubmitting,
@@ -37,8 +41,8 @@ export function CitaForm({
     defaultValues: {
       service_ids: [],
       date: defaultDate,
-      start_time: '',
-      end_time: '',
+      start_time: defaultStartTime,
+      end_time: defaultEndTime,
       customer_name: '',
       country_code: '+52',
       customer_phone: '',
