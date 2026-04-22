@@ -120,8 +120,30 @@ Props (`DrawerProps`, named export):
 
 Layout: `fixed inset-0` on mobile (full-screen), `md:inset-y-0 md:left-auto md:right-0 md:w-[400px]` on desktop. Close button (X icon) lives in the header. Backdrop is `bg-surface-primary/25`.
 
+### Switch (`src/components/ui/Switch.tsx`)
+**Status:** Created
+
+Props (`SwitchProps`, named export):
+- `checked`: boolean
+- `onChange`: (next: boolean) => void
+- `label?`: string — rendered beside the switch
+- `ariaLabel?`: string — overrides label for screen readers
+- `disabled?`, `className?`
+
+Visual: `h-[24px] w-[44px]` track, 20px thumb, `bg-surface-primary` when on / `bg-surface-control` when off. Matches the existing `DayToggle` geometry in `schedule/components/`.
+
+### Checkbox (`src/components/ui/Checkbox.tsx`)
+**Status:** Created
+
+Props (`CheckboxProps`, named export, `forwardRef<HTMLInputElement>`):
+- `label?`: ReactNode — rendered beside the box
+- `containerClassName?`: wrapper override
+- All native `input` props passthrough (`checked`, `onChange`, `disabled`, `name`, `id`, …)
+
+Visual: 20px rounded square; `bg-surface-primary` + white check (`text-on-color`) when checked, `bg-surface` + `border-default` when unchecked.
+
 ### Toggle (`src/components/ui/Toggle.tsx`)
-**Status:** Not yet created
+**Status:** Not yet created (use Switch instead for on/off controls)
 
 ### Skeleton (`src/components/ui/Skeleton.tsx`)
 **Status:** Created

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useCategories, useCreateCategory } from '@/api/hooks/useCategories';
@@ -27,6 +28,7 @@ const TAB_COPY: Record<ServicesTab, { subtitle: string; createLabel: string }> =
 };
 
 export default function ServicesPage() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState<ServicesTab>('principales');
   const [filterCategoryId, setFilterCategoryId] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -119,7 +121,17 @@ export default function ServicesPage() {
             ) : (
               <div className="flex flex-col gap-600">
                 {filteredGroups.map((group) => (
-                  <CategoryCard key={group.category.id} group={group} isExtras={isExtras} />
+                  <CategoryCard
+                    key={group.category.id}
+                    group={group}
+                    isExtras={isExtras}
+                    onAddService={(categoryId) =>
+                      navigate(`/dashboard/servicios/nuevo?category=${categoryId}`)
+                    }
+                    onEditService={(serviceId) =>
+                      navigate(`/dashboard/servicios/${serviceId}/editar`)
+                    }
+                  />
                 ))}
               </div>
             )}

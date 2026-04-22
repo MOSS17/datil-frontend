@@ -23,6 +23,7 @@ export function useService(id: string) {
   return useQuery({
     queryKey: serviceKeys.detail(id),
     queryFn: () => apiClient<Service>(`${ENDPOINTS.SERVICES}/${id}`),
+    enabled: Boolean(id),
   });
 }
 
