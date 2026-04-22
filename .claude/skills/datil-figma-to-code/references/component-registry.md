@@ -71,9 +71,17 @@ Same shape as Input but for `<textarea>`. Props: `label`, `error`, `hint`, `full
 Sizing: `p-300` all-around + `text-body-sm` (matches Figma textarea `p-[12px]`). Label styled identically to Input (`font-medium`). Value text `text-body-emphasis`.
 
 ### Select (`src/components/ui/Select.tsx`)
-**Status:** Not yet created
+**Status:** Created
 
-Same pattern as Input but for `<select>`. forwardRef, same states.
+Props (`SelectProps`, named export, `forwardRef<HTMLSelectElement>`):
+- `label`, `error`, `hint`: string
+- `leftIcon`: ReactNode (rendered inside the field, e.g. clock icon for duration)
+- `options`: `{ value, label }[]` — or pass `<option>` children instead
+- `placeholder`: string (rendered as a disabled first option)
+- `fullWidth` (default `true`), `containerClassName`
+- Native `<select>` props passthrough; `id` auto-generated via `useId`.
+
+Chevron is rendered absolutely on the right. Field is sized identically to Input (`py-300 text-body-sm` → 44px). Uses the same border states (default / focus `border-primary` / error / disabled).
 
 ### Card (`src/components/ui/Card.tsx`)
 **Status:** Created
@@ -95,6 +103,22 @@ Expected variants:
 
 ### Modal (`src/components/ui/Modal.tsx`)
 **Status:** Not yet created
+
+### Drawer (`src/components/ui/Drawer.tsx`)
+**Status:** Created
+
+Side drawer on desktop (slides in from the right), full-screen sheet on mobile.
+
+Props (`DrawerProps`, named export):
+- `open`: boolean
+- `onClose`: () => void (also triggered by Escape key + overlay click)
+- `title`: ReactNode — rendered in a Spectral `text-h5` heading
+- `children`: ReactNode — the scrollable body
+- `footer`: ReactNode — optional pinned footer with a top border
+- `ariaLabel`: string — sets `aria-label` on the dialog element
+- `widthClassName`: string — override desktop width (default `md:w-[400px]`)
+
+Layout: `fixed inset-0` on mobile (full-screen), `md:inset-y-0 md:left-auto md:right-0 md:w-[400px]` on desktop. Close button (X icon) lives in the header. Backdrop is `bg-surface-primary/25`.
 
 ### Toggle (`src/components/ui/Toggle.tsx`)
 **Status:** Not yet created

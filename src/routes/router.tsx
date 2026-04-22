@@ -10,7 +10,7 @@ const DashboardLayout = lazy(() => import('./dashboard/DashboardLayout'));
 const HomePage = lazy(() => import('./dashboard/home/HomePage'));
 const ServicesPage = lazy(() => import('./dashboard/ServicesPage'));
 const CategoriesPage = lazy(() => import('./dashboard/CategoriesPage'));
-const AppointmentsPage = lazy(() => import('./dashboard/AppointmentsPage'));
+const CalendarioPage = lazy(() => import('./dashboard/citas/CalendarioPage'));
 const SchedulePage = lazy(() => import('./dashboard/schedule/SchedulePage'));
 const PersonalTimePage = lazy(() => import('./dashboard/PersonalTimePage'));
 const ConfiguracionPage = lazy(() => import('./dashboard/configuracion/ConfiguracionPage'));
@@ -90,7 +90,7 @@ export const router = createBrowserRouter([
             path: 'citas',
             element: (
               <SuspenseWrapper>
-                <AppointmentsPage />
+                <CalendarioPage />
               </SuspenseWrapper>
             ),
           },
