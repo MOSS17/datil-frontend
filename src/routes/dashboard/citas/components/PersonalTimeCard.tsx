@@ -1,4 +1,4 @@
-import { Coffee } from 'lucide-react';
+import { MessageCircleHeart } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import type { PersonalTime } from '@/api/types/schedule';
 import { formatTimeShort, MONTH_NAMES_ES } from '../utils';
@@ -36,10 +36,13 @@ export function PersonalTimeCard({ personalTime, className }: PersonalTimeCardPr
       )}
     >
       <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-surface-disabled-emphasis" />
-      <div className="flex items-center gap-200 text-body-sm font-medium text-body-emphasis">
-        <Coffee size={14} strokeWidth={1.75} aria-hidden className="shrink-0 text-icon-secondary" />
-        <span className="truncate">Tiempo Personal</span>
-      </div>
+      <MessageCircleHeart
+        size={16}
+        strokeWidth={1.75}
+        aria-hidden
+        className="shrink-0 text-icon-secondary"
+      />
+      <p className="truncate text-body-sm font-semibold text-muted">Tiempo Personal</p>
       {timeLabel && <p className="text-caption text-muted">{timeLabel}</p>}
       {dateLabel && !timeLabel && <p className="text-caption text-muted">{dateLabel}</p>}
     </div>
