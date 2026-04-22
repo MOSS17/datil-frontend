@@ -49,6 +49,7 @@ Figma exports variable references in a nested, slash-delimited shape (`--surface
 | `--surface/error/default-subtle` | `#EFD2D2` | `bg-surface-error-subtle` |
 | `--surface/disabled` | `#EBEAEA` | `bg-surface-disabled` |
 | Raw `#FBF2EB` (warm cream behind logo previews) | `#FBF2EB` | `bg-surface-brand-subtle` |
+| Raw `#E8E5E0` (cooler chrome bg — neutral indicator bars, chips) | `#E8E5E0` | `bg-surface-control` |
 
 ### Text colors (`text-*`)
 

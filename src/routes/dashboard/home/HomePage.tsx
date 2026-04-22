@@ -1,0 +1,262 @@
+import { Fragment, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Link2, Pin, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { useAppointments } from '@/api/hooks/useAppointments';
+import { useMyBusiness } from '@/api/hooks/useBusiness';
+import { useAuth } from '@/auth/AuthContext';
+import { PageHeader } from '../components/PageHeader';
+import { ErrorState } from '../components/ErrorState';
+import { MetricCard } from './components/MetricCard';
+import { UpcomingAppointmentRow } from './components/UpcomingAppointmentRow';
+import { RecentBookingRow } from './components/RecentBookingRow';
+import { HomePageSkeleton } from './components/HomePageSkeleton';
+import {
+  computeMetrics,
+  findNextUpId,
+  formatMetricRevenue,
+  formatMonthYear,
+  formatShortDate,
+  formatWeekRange,
+  getFirstName,
+  getRecentBookings,
+  getUpcoming,
+} from './utils';
+
+export default function HomePage() {
+  const { user } = useAuth();
+  const { data: business } = useMyBusiness();
+  const { data: appointments, isLoading, error, refetch } = useAppointments();
+  const navigate = useNavigate();
+
+  const now = useMemo(() => new Date(), []);
+  const firstName = getFirstName(user?.name ?? '');
+
+  const derived = useMemo(() => {
+    const list = appointments ?? [];
+    return {
+      metrics: computeMetrics(list, now),
+      upcoming: getUpcoming(list, now, 5),
+      recent: getRecentBookings(list, 5),
+      nextUpId: findNextUpId(list, now),
+      isEmpty: list.length === 0,
+    };
+  }, [appointments, now]);
+
+  const handleShare = async () => {
+    if (!business) return;
+    const url = `${window.location.origin}/${business.slug}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      // Clipboard API unavailable; fall back silently.
+    }
+  };
+
+  const desktopActions = (
+    <div className="hidden items-start gap-300 md:flex">
+      <Button
+        variant="secondary"
+        onClick={handleShare}
+        disabled={!business}
+        leftIcon={<Link2 aria-hidden size={16} strokeWidth={1.75} />}
+      >
+        Compartir Página de Reservas
+      </Button>
+      <Button
+        onClick={() => navigate('/dashboard/citas')}
+        leftIcon={<Plus aria-hidden size={16} strokeWidth={1.75} />}
+      >
+        Nueva Cita
+      </Button>
+    </div>
+  );
+
+  const header = (
+    <PageHeader
+      title={firstName ? `Hola, ${firstName}` : 'Hola'}
+      subtitle="Bienvenida de nuevo. Aquí está tu resumen del día."
+      actions={desktopActions}
+    />
+  );
+
+  const wrapper =
+    'flex flex-col gap-600 px-400 pb-800 md:gap-700 md:px-1000 md:pt-800';
+
+  if (isLoading) {
+    return (
+      <div className={wrapper}>
+        {header}
+        <HomePageSkeleton />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={wrapper}>
+        {header}
+        <Card>
+          <ErrorState
+            message="No se pudieron cargar tus citas."
+            onRetry={() => refetch()}
+          />
+        </Card>
+      </div>
+    );
+  }
+
+  const { metrics, upcoming, recent, nextUpId, isEmpty } = derived;
+  const currentYear = now.getFullYear();
+
+  const mobileActions = (
+    <div className="flex flex-col gap-300 md:hidden">
+      <Button
+        variant="secondary"
+        fullWidth
+        onClick={handleShare}
+        disabled={!business}
+        leftIcon={<Link2 aria-hidden size={16} strokeWidth={1.75} />}
+      >
+        Copiar Link de Citas
+      </Button>
+      <Button
+        fullWidth
+        onClick={() => navigate('/dashboard/citas')}
+        leftIcon={<Plus aria-hidden size={16} strokeWidth={1.75} />}
+      >
+        Nueva Cita
+      </Button>
+    </div>
+  );
+
+  const footer = (
+    <div className="md:hidden">
+      <hr className="-mx-400 border-t border-subtle" aria-hidden />
+      <p className="mt-600 text-center font-sans text-caption text-muted">
+        © {currentYear} Datil. All rights reserved.
+      </p>
+    </div>
+  );
+
+  return (
+    <div className={wrapper}>
+      {header}
+
+      <div className="flex gap-200 md:gap-400">
+        <MetricCard
+          icon={<Pin size={16} strokeWidth={1.75} />}
+          label="Citas de Hoy"
+          meta={formatShortDate(now)}
+          value={String(metrics.todayCount)}
+          caption={
+            metrics.todayCount > 0
+              ? `${metrics.todayCompleted} completadas, ${metrics.todayPending} pendientes`
+              : 'Sin citas hoy'
+          }
+        />
+        <MetricCard
+          icon={<Pin size={16} strokeWidth={1.75} />}
+          label="Esta Semana"
+          meta={formatWeekRange(now)}
+          value={String(metrics.weekCount)}
+          caption={
+            metrics.weekCount > 0
+              ? `${metrics.weekCompleted} completadas, ${metrics.weekPending} pendientes`
+              : 'Sin citas esta semana'
+          }
+        />
+        <MetricCard
+          icon={<Pin size={16} strokeWidth={1.75} />}
+          label="Ingresos del Mes"
+          labelMobile="Ingresos Totales"
+          meta={formatMonthYear(now)}
+          metaMobile={`${formatMonthYear(now).slice(0, 3)} ${now.getFullYear()}`}
+          value={formatMetricRevenue(metrics.monthRevenue)}
+        />
+      </div>
+
+      {isEmpty ? (
+        <Card>
+          <div className="flex flex-col items-start gap-300">
+            <p className="font-sans text-body text-body-emphasis">
+              Aún no tienes citas.
+            </p>
+            <p className="font-sans text-body-sm text-muted">
+              Comparte tu página de reservas para que tus clientes empiecen a
+              agendar.
+            </p>
+          </div>
+        </Card>
+      ) : (
+        <div className="flex flex-col gap-600 md:flex-1 md:flex-row md:min-h-0 md:items-stretch">
+          <Card
+            padding="none"
+            className="flex flex-1 min-w-0 flex-col overflow-hidden"
+          >
+            <div className="flex items-center justify-between px-500 py-400">
+              <h2 className="font-serif text-h6 text-heading">Próximas Citas</h2>
+              <button
+                type="button"
+                onClick={() => navigate('/dashboard/citas')}
+                className="font-sans text-body-sm font-medium text-accent hover:text-accent-700"
+              >
+                Ver Todas
+              </button>
+            </div>
+            <div className="border-t border-subtle" />
+            {upcoming.length === 0 ? (
+              <p className="px-500 py-400 font-sans text-body-sm text-muted">
+                No tienes citas próximas.
+              </p>
+            ) : (
+              upcoming.map((appt) => (
+                <Fragment key={appt.id}>
+                  <UpcomingAppointmentRow
+                    appointment={appt}
+                    nextUpId={nextUpId}
+                    now={now}
+                  />
+                  <div className="border-t border-subtle" />
+                </Fragment>
+              ))
+            )}
+          </Card>
+
+          <Card
+            padding="none"
+            className="flex flex-1 min-w-0 flex-col overflow-hidden"
+          >
+            <div className="flex items-center gap-200 px-500 py-400">
+              <h2 className="font-serif text-h6 text-heading">
+                Últimas Citas Agendadas
+              </h2>
+              {recent.length > 0 && (
+                <span className="inline-flex min-h-500 min-w-500 items-center justify-center rounded-full bg-surface-accent px-100 py-25 font-sans text-body-sm font-medium text-on-color">
+                  {recent.length}
+                </span>
+              )}
+            </div>
+            <div className="border-t border-subtle" />
+            {recent.length === 0 ? (
+              <p className="px-500 py-400 font-sans text-body-sm text-muted">
+                Aún no hay reservas recientes.
+              </p>
+            ) : (
+              recent.map((appt) => (
+                <Fragment key={appt.id}>
+                  <RecentBookingRow appointment={appt} now={now} />
+                  <div className="border-t border-subtle" />
+                </Fragment>
+              ))
+            )}
+          </Card>
+        </div>
+      )}
+
+      {mobileActions}
+      {footer}
+    </div>
+  );
+}

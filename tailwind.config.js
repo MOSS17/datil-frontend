@@ -238,6 +238,9 @@ export default {
           'disabled-emphasis': '#AFABAB',
           // Warm-cream placeholder behind logo / brand previews
           'brand-subtle': '#FBF2EB',
+          // Cooler hairline/chrome bg — matches border-control (#E8E5E0).
+          // Used for neutral indicator bars, chips, etc.
+          control: '#E8E5E0',
         },
 
         // ─── Borders ───

@@ -7,7 +7,7 @@ const LoginPage = lazy(() => import('./auth/LoginPage'));
 const RegisterPage = lazy(() => import('./auth/RegisterPage'));
 
 const DashboardLayout = lazy(() => import('./dashboard/DashboardLayout'));
-const HomePage = lazy(() => import('./dashboard/HomePage'));
+const HomePage = lazy(() => import('./dashboard/home/HomePage'));
 const ServicesPage = lazy(() => import('./dashboard/ServicesPage'));
 const CategoriesPage = lazy(() => import('./dashboard/CategoriesPage'));
 const AppointmentsPage = lazy(() => import('./dashboard/AppointmentsPage'));
