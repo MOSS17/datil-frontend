@@ -27,6 +27,18 @@
 /* Explicit color utilities for `border-{name}` keys that Tailwind v4 +
    legacy @config skips (these get scanned but never emit CSS from the
    nested `border: { … }` config). Values mirror the Figma tokens. */
+@layer base {
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator,
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+  input[type="month"]::-webkit-calendar-picker-indicator,
+  input[type="week"]::-webkit-calendar-picker-indicator {
+    display: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+}
+
 @layer utilities {
   .border-default       { border-color: #e2dbcf; }
   .border-subtle        { border-color: #f0ede6; }
