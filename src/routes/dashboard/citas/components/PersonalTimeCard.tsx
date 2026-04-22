@@ -31,10 +31,11 @@ export function PersonalTimeCard({ personalTime, className }: PersonalTimeCardPr
   return (
     <div
       className={cn(
-        'flex h-full min-h-0 flex-col gap-100 overflow-hidden rounded-sm border-l-sm border-primary bg-surface-control px-300 py-200 font-sans',
+        'relative flex h-full min-h-0 flex-col gap-100 overflow-hidden rounded-sm bg-surface-control pl-400 pr-300 py-200 font-sans',
         className,
       )}
     >
+      <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-surface-disabled-emphasis" />
       <div className="flex items-center gap-200 text-body-sm font-medium text-body-emphasis">
         <Coffee size={14} strokeWidth={1.75} aria-hidden className="shrink-0 text-icon-secondary" />
         <span className="truncate">Tiempo Personal</span>

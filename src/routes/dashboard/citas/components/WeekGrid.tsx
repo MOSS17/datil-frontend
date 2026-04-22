@@ -178,7 +178,7 @@ export function WeekGrid({
                 .map((p) => (
                   <div
                     key={p.personalTime.id}
-                    className="absolute inset-x-100"
+                    className="absolute inset-x-0"
                     style={{ top: p.topPx, height: p.heightPx }}
                   >
                     <PersonalTimeCard personalTime={p.personalTime} className="h-full" />
@@ -190,7 +190,7 @@ export function WeekGrid({
                 .map((a) => (
                   <div
                     key={a.appointment.id}
-                    className="absolute inset-x-100"
+                    className="absolute inset-x-0"
                     style={{ top: a.topPx, height: a.heightPx }}
                   >
                     <AppointmentCard appointment={a.appointment} className="h-full" />

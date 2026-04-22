@@ -16,10 +16,11 @@ export function AppointmentCard({ appointment, className }: AppointmentCardProps
   return (
     <div
       className={cn(
-        'flex h-full min-h-0 flex-col gap-100 overflow-hidden rounded-sm border-l-sm border-primary bg-surface-secondary px-300 py-200 font-sans',
+        'relative flex h-full min-h-0 flex-col gap-100 overflow-hidden rounded-sm bg-surface-secondary pl-400 pr-300 py-200 font-sans',
         className,
       )}
     >
+      <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-surface-primary" />
       <p className="truncate text-body-sm font-medium text-body-emphasis">
         {main?.service_name ?? 'Cita'}
       </p>

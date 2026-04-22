@@ -123,7 +123,7 @@ export function DayView({
               return (
                 <div
                   key={p.id}
-                  className="absolute inset-x-100"
+                  className="absolute inset-x-0"
                   style={{ top: 0, height: hours.length * ROW_HEIGHT_PX }}
                 >
                   <PersonalTimeCard personalTime={p} className="h-full" />
@@ -140,7 +140,7 @@ export function DayView({
             return (
               <div
                 key={p.id}
-                className="absolute inset-x-100"
+                className="absolute inset-x-0"
                 style={{ top: topPx, height: heightPx }}
               >
                 <PersonalTimeCard personalTime={p} className="h-full" />
@@ -159,7 +159,7 @@ export function DayView({
             return (
               <div
                 key={a.id}
-                className="absolute inset-x-100"
+                className="absolute inset-x-0"
                 style={{ top: topPx, height: heightPx }}
               >
                 <AppointmentCard appointment={a} className="h-full" />
