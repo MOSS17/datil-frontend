@@ -155,10 +155,12 @@ export default function ConfirmBookingPage() {
 
   const business = businessQuery.data;
 
-  const handleCopy = async (value: string, label: string) => {
+  const handleCopy = async (value: string, label: string, gender: 'f' | 'm') => {
     try {
       await navigator.clipboard.writeText(value);
-      setToastMessage(`${label} copiada, lista para pegar.`);
+      const copied = gender === 'f' ? 'copiada' : 'copiado';
+      const ready = gender === 'f' ? 'lista' : 'listo';
+      setToastMessage(`${label} ${copied}, ${ready} para pegar.`);
     } catch {
       setToastMessage('No pudimos copiar. Inténtalo de nuevo.');
     }
@@ -273,14 +275,14 @@ export default function ConfirmBookingPage() {
                 <BankFieldRow
                   label="Nombre del beneficiario"
                   value={business.bank_holder}
-                  onCopy={() => handleCopy(business.bank_holder, 'Nombre')}
-                  className="col-start-2 row-start-2"
+                  onCopy={() => handleCopy(business.bank_holder, 'Nombre', 'm')}
+                  className="col-start-1 row-start-2"
                 />
                 <BankFieldRow
                   label="Clabe"
                   value={business.clabe}
-                  onCopy={() => handleCopy(business.clabe, 'Clabe')}
-                  className="col-start-1 row-start-3"
+                  onCopy={() => handleCopy(business.clabe, 'Clabe', 'f')}
+                  className="col-start-2 row-start-2"
                 />
               </div>
 
@@ -316,13 +318,13 @@ export default function ConfirmBookingPage() {
                 <MobileBankRow
                   label="Clabe"
                   value={business.clabe}
-                  onCopy={() => handleCopy(business.clabe, 'Clabe')}
+                  onCopy={() => handleCopy(business.clabe, 'Clabe', 'f')}
                 />
                 <MobileDivider />
                 <MobileBankRow
                   label="Nombre del beneficiario"
                   value={business.bank_holder}
-                  onCopy={() => handleCopy(business.bank_holder, 'Nombre')}
+                  onCopy={() => handleCopy(business.bank_holder, 'Nombre', 'm')}
                 />
                 <MobileDivider />
                 <MobileBankRow label="Tipo" value="Débito" />
