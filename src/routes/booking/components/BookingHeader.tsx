@@ -18,10 +18,10 @@ export function BookingHeader({ businessName, businessSlug, logoUrl }: BookingHe
       >
         <Link
           to={`/${businessSlug}`}
-          className="flex items-center gap-300"
+          className="flex min-w-0 flex-1 items-center gap-300"
           aria-label={businessName ? `Inicio de ${businessName}` : 'Inicio'}
         >
-          <div className="flex h-800 w-800 items-center justify-center overflow-hidden rounded-md bg-surface-brand-subtle">
+          <div className="flex h-800 w-800 shrink-0 items-center justify-center overflow-hidden rounded-md bg-surface-brand-subtle">
             {logoUrl ? (
               <img
                 src={logoUrl}
@@ -31,10 +31,12 @@ export function BookingHeader({ businessName, businessSlug, logoUrl }: BookingHe
             ) : null}
           </div>
           {businessName ? (
-            <p className="font-serif text-h6 text-heading">{businessName}</p>
+            <p className="min-w-0 truncate font-serif text-h6 text-heading">
+              {businessName}
+            </p>
           ) : null}
         </Link>
-        <p className="font-sans text-caption text-muted">Powered by Datil</p>
+        <p className="shrink-0 font-sans text-caption text-muted">Powered by Datil</p>
       </div>
     </header>
   );
