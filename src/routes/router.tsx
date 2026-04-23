@@ -21,10 +21,14 @@ const ConfiguracionPage = lazy(() => import('./dashboard/configuracion/Configura
 const BankDetailsPage = lazy(() => import('./dashboard/BankDetailsPage'));
 
 const BookingLayout = lazy(() => import('./booking/BookingLayout'));
-const BusinessPage = lazy(() => import('./booking/BusinessPage'));
-const SelectServicesPage = lazy(() => import('./booking/SelectServicesPage'));
-const SelectTimePage = lazy(() => import('./booking/SelectTimePage'));
-const ConfirmBookingPage = lazy(() => import('./booking/ConfirmBookingPage'));
+const BusinessPage = lazy(() => import('./booking/business/BusinessPage'));
+const ReservationPage = lazy(() => import('./booking/reservation/ReservationPage'));
+const BookingSchedulePage = lazy(() => import('./booking/schedule/SchedulePage'));
+const DatosPage = lazy(() => import('./booking/datos/DatosPage'));
+const ConfirmBookingPage = lazy(() => import('./booking/confirmar/ConfirmBookingPage'));
+const ReservationConfirmedPage = lazy(
+  () => import('./booking/confirmada/ReservationConfirmedPage'),
+);
 
 function SuspenseWrapper({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={null}>{children}</Suspense>;
@@ -215,10 +219,10 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'servicios',
+        path: 'resumen',
         element: (
           <SuspenseWrapper>
-            <SelectServicesPage />
+            <ReservationPage />
           </SuspenseWrapper>
         ),
       },
@@ -226,7 +230,15 @@ export const router = createBrowserRouter([
         path: 'horario',
         element: (
           <SuspenseWrapper>
-            <SelectTimePage />
+            <BookingSchedulePage />
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: 'datos',
+        element: (
+          <SuspenseWrapper>
+            <DatosPage />
           </SuspenseWrapper>
         ),
       },
@@ -235,6 +247,14 @@ export const router = createBrowserRouter([
         element: (
           <SuspenseWrapper>
             <ConfirmBookingPage />
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: 'confirmada',
+        element: (
+          <SuspenseWrapper>
+            <ReservationConfirmedPage />
           </SuspenseWrapper>
         ),
       },

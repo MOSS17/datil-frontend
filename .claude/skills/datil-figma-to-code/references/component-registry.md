@@ -188,6 +188,31 @@ Back arrow + label above the heading on forgot/reset flows. Props: `{ to: string
 
 6-cell numeric input for email verification. Handles autofocus, paste (distributes digits across cells), arrow / backspace navigation, and auto-submits when filled. Props: `{ length?, value, onChange, onComplete?, autoFocus?, disabled?, error?, ariaLabel? }`. Cells are 48×56 with `border-default` / focus `border-primary` / error `border-error`.
 
+### Booking flow (`src/routes/booking/`)
+**Status:** Created (route-local — customer-facing public booking flow)
+
+Structure: `BookingLayout` wraps all `/:slug/*` routes with shared header (`components/BookingHeader`), footer (`components/BookingFooter`), and the `BookingProvider` (selection state backed by sessionStorage, keyed per-slug).
+
+Selection state lives in `bookingContextValue.ts` (context + types only), `BookingContext.tsx` (provider + storage sync), and `useBookingSelection.ts` (hook). Shape: `BookingSelection = { id, serviceId, extraIds[] }`.
+
+Pages:
+- `business/BusinessPage.tsx` (`/:slug`) — hero, category tabs, category accordions, service cards that open the extras sheet, floating "N Servicios | Continuar" CTA when selections exist.
+- `reservation/ReservationPage.tsx` (`/:slug/resumen`) — "Tu Reservación" summary with per-selection edit/remove, extras shown as inset rows with a left-accent border, and a primary "Reservar {price} | {duration}" CTA.
+- `schedule/SchedulePage.tsx` (`/:slug/horario`) — step-2 date + time picker. Desktop: two-col grid (calendar | time slots). Mobile: stacked with sticky `MobileSummaryCard` + `DetailsSheet`.
+- `datos/DatosPage.tsx` (`/:slug/datos`) — step-3 customer info form (React Hook Form + Zod `bookingInfoSchema`). Desktop: two-col grid (`DesktopReservationSummary` left, form + right-aligned submit right). Mobile: form card, `MobileReservationPill` with "Detalles" button opening `DetailsSheet`, sticky footer with primary "Continuar con Anticipo" + "Regresar" link. Redirects back to `/:slug` if no selections, to `/:slug/horario` if no date/time.
+
+Reusable within booking but not shared across features (not promoted to `components/ui/`):
+- `schedule/components/DetailsSheet.tsx` — reservation summary drawer (right on desktop, bottom sheet on mobile). Reused by step-2 schedule and step-3 datos. Props include `selections`, `location`, `totalDuration`, `totalPrice`, plus optional `dateLine` + `timeLine` (rendered as a `Fecha y Hora` section when provided).
+- `business/components/ExtrasSheet.tsx` — right drawer on desktop (`md:w-[400px]`), bottom sheet on mobile. Supports `mode: 'add' | 'edit'`, `initialExtraIds`. Doesn't use the generic `Drawer` because the header is a two-line service title in `text-h5` (mobile) / `text-h4` (desktop) centered vs left-aligned.
+- `business/components/CategoryTabs.tsx` — horizontal tabs with bottom-border active indicator; first tab is always "Todos".
+- `business/components/CategoryAccordion.tsx` — section with expand/collapse chevron; renders 1–3-col service grid.
+- `business/components/ServiceCard.tsx` — card in the catalog; shows `Check` when selected (stays selected if the category allows multiple).
+- `business/components/ExtraItem.tsx` — row inside `ExtrasSheet`.
+- `business/components/FloatingContinueCTA.tsx` — pill CTA centered at bottom of viewport.
+- `reservation/components/SelectionItem.tsx` — row on `Tu Reservación`; extras rendered with `border-l-[3px] border-accent bg-surface-secondary-subtle`.
+
+Helpers: `business/selection.ts` — pure functions for grouping services/extras by category and computing per-selection price/duration totals. `groupExtrasByCategory` treats every `is_extra && is_active` service as an available extra (grouped by its category) until per-service extra linking ships on the backend.
+
 ---
 
 ## Utilities
