@@ -25,7 +25,7 @@ const BusinessPage = lazy(() => import('./booking/business/BusinessPage'));
 const ReservationPage = lazy(() => import('./booking/reservation/ReservationPage'));
 const BookingSchedulePage = lazy(() => import('./booking/schedule/SchedulePage'));
 const DatosPage = lazy(() => import('./booking/datos/DatosPage'));
-const ConfirmBookingPage = lazy(() => import('./booking/ConfirmBookingPage'));
+const ConfirmBookingPage = lazy(() => import('./booking/confirmar/ConfirmBookingPage'));
 
 function SuspenseWrapper({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={null}>{children}</Suspense>;
