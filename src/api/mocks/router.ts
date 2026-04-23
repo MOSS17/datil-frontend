@@ -1,5 +1,5 @@
-// TODO(mocks): dev-only. Matches incoming apiClient calls to mock data so the frontend
-// works without a backend. Delete when the real API is wired up.
+// TODO(mocks): matches incoming apiClient calls to mock data so the frontend
+// works without a backend (enabled in dev + prod preview). Delete when the real API is wired up.
 import {
   mockAppointments,
   mockBusiness,
@@ -11,8 +11,7 @@ import {
   mockWorkdays,
 } from './data';
 
-export const MOCKS_ENABLED =
-  import.meta.env.DEV && import.meta.env.VITE_API_MOCKS !== 'false';
+export const MOCKS_ENABLED = import.meta.env.VITE_API_MOCKS !== 'false';
 
 const MOCK_LATENCY_MS = 200;
 

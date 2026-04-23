@@ -5,9 +5,9 @@ import { apiClient } from '@/api/client';
 import { ENDPOINTS } from '@/api/endpoints';
 import type { User } from '@/api/types/auth';
 
-// TODO(auth): dev-only bypass so the dashboard is reachable without a backend.
+// TODO(auth): bypass so the dashboard is reachable without a backend (dev + prod preview).
 // Remove before shipping — or gate on `import.meta.env.VITE_AUTH_BYPASS === 'true'`.
-const DEV_BYPASS_AUTH = import.meta.env.DEV;
+const DEV_BYPASS_AUTH = true;
 const DEV_USER: User = {
   id: 'dev-user',
   email: 'jane@ardenstudio',
