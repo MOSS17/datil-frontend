@@ -4,6 +4,8 @@ import { ProtectedRoute } from '@/auth/ProtectedRoute';
 
 const LandingPage = lazy(() => import('./LandingPage'));
 const LoginPage = lazy(() => import('./auth/LoginPage'));
+const ForgotPasswordPage = lazy(() => import('./auth/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./auth/ResetPasswordPage'));
 const RegisterPage = lazy(() => import('./auth/RegisterPage'));
 const VerifyEmailPage = lazy(() => import('./auth/registro/VerifyEmailPage'));
 
@@ -42,6 +44,22 @@ export const router = createBrowserRouter([
     element: (
       <SuspenseWrapper>
         <LoginPage />
+      </SuspenseWrapper>
+    ),
+  },
+  {
+    path: '/login/recuperar',
+    element: (
+      <SuspenseWrapper>
+        <ForgotPasswordPage />
+      </SuspenseWrapper>
+    ),
+  },
+  {
+    path: '/login/nueva-contrasena',
+    element: (
+      <SuspenseWrapper>
+        <ResetPasswordPage />
       </SuspenseWrapper>
     ),
   },

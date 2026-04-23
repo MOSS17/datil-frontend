@@ -7,6 +7,8 @@ import type {
   AuthResponse,
   VerifyEmailRequest,
   ResendCodeRequest,
+  ForgotPasswordRequest,
+  ResetPasswordRequest,
 } from '@/api/types/auth';
 
 export function useLogin() {
@@ -37,5 +39,24 @@ export function useResendCode() {
   return useMutation({
     mutationFn: (data: ResendCodeRequest) =>
       apiClient<void>(ENDPOINTS.AUTH.RESEND_CODE, { method: 'POST', body: data }),
+  });
+}
+
+// TODO(backend): /auth/forgot-password and /auth/reset-password are not yet
+// implemented server-side. Forgot-password should return 204 regardless of
+// whether the email exists (to avoid account enumeration); reset-password
+// expects the token from the emailed link and returns 204 on success,
+// 400 with an ApiError message when the token is invalid or expired.
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: (data: ForgotPasswordRequest) =>
+      apiClient<void>(ENDPOINTS.AUTH.FORGOT_PASSWORD, { method: 'POST', body: data }),
+  });
+}
+
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: (data: ResetPasswordRequest) =>
+      apiClient<void>(ENDPOINTS.AUTH.RESET_PASSWORD, { method: 'POST', body: data }),
   });
 }

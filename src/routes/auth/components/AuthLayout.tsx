@@ -3,9 +3,10 @@ import type { ReactNode } from 'react';
 
 export interface AuthLayoutProps {
   children: ReactNode;
+  notice?: ReactNode;
 }
 
-export function AuthLayout({ children }: AuthLayoutProps) {
+export function AuthLayout({ children, notice }: AuthLayoutProps) {
   return (
     <div className="relative min-h-screen bg-surface-page">
       <Link
@@ -21,6 +22,11 @@ export function AuthLayout({ children }: AuthLayoutProps) {
         </span>
         <span className="font-serif text-body-lg text-heading">Datil</span>
       </Link>
+      {notice && (
+        <div className="absolute right-600 top-800 z-10 w-full max-w-[403px] px-600 md:px-0">
+          {notice}
+        </div>
+      )}
       <div className="flex min-h-screen items-center justify-center px-600 py-1200">
         {children}
       </div>

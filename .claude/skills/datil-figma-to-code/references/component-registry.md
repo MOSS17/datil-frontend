@@ -176,7 +176,12 @@ Props (`SkeletonProps`, named export):
 ### AuthLayout (`src/routes/auth/components/AuthLayout.tsx`)
 **Status:** Created (route-local, shared by auth routes)
 
-Wraps every auth screen. Renders the Datil brand mark (dark "D" tile + "Datil" wordmark) absolute top-left and centers `children` in the viewport on `bg-surface-page`. Props: `{ children: ReactNode }`.
+Wraps every auth screen. Renders the Datil brand mark (dark "D" tile + "Datil" wordmark) absolute top-left and centers `children` in the viewport on `bg-surface-page`. Props: `{ children: ReactNode, notice?: ReactNode }`. The `notice` slot renders top-right in a `max-w-[403px]` container — used for the post-password-reset success banner on `/login?reset=success`.
+
+### AuthBackLink (`src/routes/auth/components/AuthBackLink.tsx`)
+**Status:** Created (route-local)
+
+Back arrow + label above the heading on forgot/reset flows. Props: `{ to: string, label?: string }` (default "Volver al inicio de Sesión"). Uses `ArrowLeft` from lucide-react, `text-body-sm font-medium text-primary`.
 
 ### OtpInput (`src/routes/auth/registro/components/OtpInput.tsx`)
 **Status:** Created (page-local — promote to `components/ui/` if a second screen needs OTP entry)
