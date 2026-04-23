@@ -5,6 +5,7 @@ import { ProtectedRoute } from '@/auth/ProtectedRoute';
 const LandingPage = lazy(() => import('./LandingPage'));
 const LoginPage = lazy(() => import('./auth/LoginPage'));
 const RegisterPage = lazy(() => import('./auth/RegisterPage'));
+const VerifyEmailPage = lazy(() => import('./auth/registro/VerifyEmailPage'));
 
 const DashboardLayout = lazy(() => import('./dashboard/DashboardLayout'));
 const HomePage = lazy(() => import('./dashboard/home/HomePage'));
@@ -49,6 +50,14 @@ export const router = createBrowserRouter([
     element: (
       <SuspenseWrapper>
         <RegisterPage />
+      </SuspenseWrapper>
+    ),
+  },
+  {
+    path: '/registro/verificar',
+    element: (
+      <SuspenseWrapper>
+        <VerifyEmailPage />
       </SuspenseWrapper>
     ),
   },

@@ -14,9 +14,19 @@ export interface RegisterRequest {
   email: string;
   password: string;
   name: string;
+  business_name: string;
 }
 
 export interface AuthResponse {
   token: string;
   user: User;
+}
+
+export interface VerifyEmailRequest {
+  email: string;
+  code: string;
+}
+
+export interface ResendCodeRequest {
+  email: string;
 }

@@ -5,6 +5,7 @@ import {
   type InputHTMLAttributes,
   type ReactNode,
 } from 'react';
+import { CircleSlash } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -144,8 +145,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           ))}
       </div>
       {error ? (
-        <p id={`${inputId}-error`} className="font-sans text-caption text-error">
-          {error}
+        <p
+          id={`${inputId}-error`}
+          className="flex items-start gap-200 font-sans text-body-sm font-medium text-error"
+        >
+          <CircleSlash aria-hidden size={16} className="mt-px shrink-0" />
+          <span>{error}</span>
         </p>
       ) : hint ? (
         <p id={`${inputId}-hint`} className="font-sans text-caption text-muted">

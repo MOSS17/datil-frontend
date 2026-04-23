@@ -1,4 +1,5 @@
 import { forwardRef, useId, type TextareaHTMLAttributes } from 'react';
+import { CircleSlash } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
 export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -57,8 +58,12 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
         {...rest}
       />
       {error ? (
-        <p id={`${textareaId}-error`} className="font-sans text-caption text-error">
-          {error}
+        <p
+          id={`${textareaId}-error`}
+          className="flex items-start gap-200 font-sans text-body-sm font-medium text-error"
+        >
+          <CircleSlash aria-hidden size={16} className="mt-px shrink-0" />
+          <span>{error}</span>
         </p>
       ) : hint ? (
         <p id={`${textareaId}-hint`} className="font-sans text-caption text-muted">

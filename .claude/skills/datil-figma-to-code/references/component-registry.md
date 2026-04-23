@@ -63,12 +63,16 @@ Value text: `text-body-emphasis` for typed content; `text-placeholder` for place
 
 States (border): default `border-default` · focus `border-primary` · error `border-error` · disabled `border-disabled` + `bg-surface-disabled`.
 
+Error message rendering: when `error` is set, the message renders with a 16px `CircleSlash` icon prefix (lucide-react) + `text-body-sm font-medium text-error` (matches the Figma error pattern). Hints remain `text-caption text-muted`.
+
 ### Textarea (`src/components/ui/Textarea.tsx`)
 **Status:** Created
 
 Same shape as Input but for `<textarea>`. Props: `label`, `error`, `hint`, `fullWidth`, `containerClassName`, `rows` (default 4). `forwardRef<HTMLTextAreaElement>`, `resize-none`, same border states.
 
 Sizing: `p-300` all-around + `text-body-sm` (matches Figma textarea `p-[12px]`). Label styled identically to Input (`font-medium`). Value text `text-body-emphasis`.
+
+Error message rendering matches `Input`: 16px `CircleSlash` + `text-body-sm font-medium text-error`.
 
 ### Select (`src/components/ui/Select.tsx`)
 **Status:** Created
@@ -168,6 +172,16 @@ Props (`SkeletonProps`, named export):
 ### PageHeader (`src/components/ui/PageHeader.tsx`)
 **Status:** Not yet created
 (Currently inlined in `ConfiguracionPage` — extract when a second page needs the same pattern.)
+
+### AuthLayout (`src/routes/auth/components/AuthLayout.tsx`)
+**Status:** Created (route-local, shared by auth routes)
+
+Wraps every auth screen. Renders the Datil brand mark (dark "D" tile + "Datil" wordmark) absolute top-left and centers `children` in the viewport on `bg-surface-page`. Props: `{ children: ReactNode }`.
+
+### OtpInput (`src/routes/auth/registro/components/OtpInput.tsx`)
+**Status:** Created (page-local — promote to `components/ui/` if a second screen needs OTP entry)
+
+6-cell numeric input for email verification. Handles autofocus, paste (distributes digits across cells), arrow / backspace navigation, and auto-submits when filled. Props: `{ length?, value, onChange, onComplete?, autoFocus?, disabled?, error?, ariaLabel? }`. Cells are 48×56 with `border-default` / focus `border-primary` / error `border-error`.
 
 ---
 
