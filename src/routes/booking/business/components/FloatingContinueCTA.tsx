@@ -9,7 +9,7 @@ interface FloatingContinueCTAProps {
 export function FloatingContinueCTA({ count, onClick }: FloatingContinueCTAProps) {
   const label = `${count} ${count === 1 ? 'Servicio' : 'Servicios'}`;
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-600 pb-600 md:pb-800">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-600 pb-600 md:justify-end md:px-1200 md:pb-800">
       <button
         type="button"
         onClick={onClick}

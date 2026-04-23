@@ -103,9 +103,9 @@ export default function ReservationPage() {
     <div className="mx-auto flex w-full max-w-[720px] flex-col gap-800 px-600 py-800">
       <Link
         to={`/${slug}`}
-        className="inline-flex items-center gap-100 self-start font-sans text-body-sm text-primary-400 hover:text-primary-hover focus:outline-none focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-border-primary focus-visible:ring-offset-2"
+        className="inline-flex items-center gap-200 self-start font-sans text-body-lg font-semibold text-secondary hover:text-secondary-hover focus:outline-none focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-border-primary focus-visible:ring-offset-2"
       >
-        <ChevronLeft size={16} strokeWidth={1.75} aria-hidden />
+        <ChevronLeft size={24} strokeWidth={2} aria-hidden />
         <span className="hidden md:inline">Regresar</span>
         <span className="md:hidden">Atrás</span>
       </Link>
