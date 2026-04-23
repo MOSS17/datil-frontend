@@ -21,8 +21,8 @@ const ConfiguracionPage = lazy(() => import('./dashboard/configuracion/Configura
 const BankDetailsPage = lazy(() => import('./dashboard/BankDetailsPage'));
 
 const BookingLayout = lazy(() => import('./booking/BookingLayout'));
-const BusinessPage = lazy(() => import('./booking/BusinessPage'));
-const SelectServicesPage = lazy(() => import('./booking/SelectServicesPage'));
+const BusinessPage = lazy(() => import('./booking/business/BusinessPage'));
+const ReservationPage = lazy(() => import('./booking/reservation/ReservationPage'));
 const SelectTimePage = lazy(() => import('./booking/SelectTimePage'));
 const ConfirmBookingPage = lazy(() => import('./booking/ConfirmBookingPage'));
 
@@ -215,10 +215,10 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'servicios',
+        path: 'resumen',
         element: (
           <SuspenseWrapper>
-            <SelectServicesPage />
+            <ReservationPage />
           </SuspenseWrapper>
         ),
       },
