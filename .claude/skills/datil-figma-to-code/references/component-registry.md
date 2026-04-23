@@ -198,8 +198,11 @@ Selection state lives in `bookingContextValue.ts` (context + types only), `Booki
 Pages:
 - `business/BusinessPage.tsx` (`/:slug`) — hero, category tabs, category accordions, service cards that open the extras sheet, floating "N Servicios | Continuar" CTA when selections exist.
 - `reservation/ReservationPage.tsx` (`/:slug/resumen`) — "Tu Reservación" summary with per-selection edit/remove, extras shown as inset rows with a left-accent border, and a primary "Reservar {price} | {duration}" CTA.
+- `schedule/SchedulePage.tsx` (`/:slug/horario`) — step-2 date + time picker. Desktop: two-col grid (calendar | time slots). Mobile: stacked with sticky `MobileSummaryCard` + `DetailsSheet`.
+- `datos/DatosPage.tsx` (`/:slug/datos`) — step-3 customer info form (React Hook Form + Zod `bookingInfoSchema`). Desktop: two-col grid (`DesktopReservationSummary` left, form + right-aligned submit right). Mobile: form card, `MobileReservationPill` with "Detalles" button opening `DetailsSheet`, sticky footer with primary "Continuar con Anticipo" + "Regresar" link. Redirects back to `/:slug` if no selections, to `/:slug/horario` if no date/time.
 
 Reusable within booking but not shared across features (not promoted to `components/ui/`):
+- `schedule/components/DetailsSheet.tsx` — reservation summary drawer (right on desktop, bottom sheet on mobile). Reused by step-2 schedule and step-3 datos. Props include `selections`, `location`, `totalDuration`, `totalPrice`, plus optional `dateLine` + `timeLine` (rendered as a `Fecha y Hora` section when provided).
 - `business/components/ExtrasSheet.tsx` — right drawer on desktop (`md:w-[400px]`), bottom sheet on mobile. Supports `mode: 'add' | 'edit'`, `initialExtraIds`. Doesn't use the generic `Drawer` because the header is a two-line service title in `text-h5` (mobile) / `text-h4` (desktop) centered vs left-aligned.
 - `business/components/CategoryTabs.tsx` — horizontal tabs with bottom-border active indicator; first tab is always "Todos".
 - `business/components/CategoryAccordion.tsx` — section with expand/collapse chevron; renders 1–3-col service grid.

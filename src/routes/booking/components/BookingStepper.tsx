@@ -23,14 +23,14 @@ export function BookingStepper({ currentStep }: BookingStepperProps) {
           const upcoming = step.id > currentStep;
           return (
             <li key={step.id} className="flex items-center">
-              <div className="flex items-center gap-300">
+              <div className="flex items-center gap-200 md:gap-300">
                 <span
                   aria-hidden
                   className={cn(
-                    'flex h-800 w-800 shrink-0 items-center justify-center rounded-full font-sans text-body-sm font-medium',
+                    'flex h-700 w-700 shrink-0 items-center justify-center rounded-full font-sans text-body-sm font-semibold',
                     completed && 'bg-surface-primary text-on-color',
-                    current && 'border-2 border-primary bg-surface text-primary',
-                    upcoming && 'border border-control bg-surface text-muted',
+                    current && 'border border-strong bg-surface text-body-emphasis',
+                    upcoming && 'border border-default bg-surface text-muted',
                   )}
                 >
                   {step.id}
@@ -38,8 +38,7 @@ export function BookingStepper({ currentStep }: BookingStepperProps) {
                 <span
                   className={cn(
                     'hidden font-sans text-body-sm font-medium md:inline',
-                    completed && 'text-primary',
-                    current && 'text-primary',
+                    (completed || current) && 'text-primary-400',
                     upcoming && 'text-muted',
                   )}
                 >
@@ -50,8 +49,8 @@ export function BookingStepper({ currentStep }: BookingStepperProps) {
                 <span
                   aria-hidden
                   className={cn(
-                    'mx-400 h-px w-500 md:w-800',
-                    completed ? 'bg-primary' : 'bg-border-control',
+                    'mx-400 h-px w-600 md:w-1100',
+                    step.id < currentStep ? 'bg-surface-primary' : 'bg-surface-control',
                   )}
                 />
               ) : null}

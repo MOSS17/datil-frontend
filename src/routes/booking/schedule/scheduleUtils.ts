@@ -80,13 +80,45 @@ export function buildMonthGrid(year: number, month: number): CalendarCell[] {
   return cells;
 }
 
-export function formatFullDate(iso: string): string {
+const SPANISH_WEEKDAYS = [
+  'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado',
+] as const;
+
+function parseIsoDate(iso: string): Date {
   const [y, m, d] = iso.split('-').map(Number);
-  const date = new Date(y, m - 1, d);
-  const weekdays = [
-    'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado',
-  ];
-  return `${weekdays[date.getDay()]}, ${date.getDate()} de ${MONTH_NAMES[date.getMonth()]}`;
+  return new Date(y, m - 1, d);
+}
+
+export function formatFullDate(iso: string): string {
+  const date = parseIsoDate(iso);
+  return `${SPANISH_WEEKDAYS[date.getDay()]}, ${date.getDate()} de ${MONTH_NAMES[date.getMonth()]}`;
+}
+
+export function formatFullDateWithYear(iso: string): string {
+  const date = parseIsoDate(iso);
+  const month = MONTH_NAMES[date.getMonth()].toLowerCase();
+  return `${SPANISH_WEEKDAYS[date.getDay()]}, ${date.getDate()} de ${month} de ${date.getFullYear()}`;
+}
+
+export function formatShortDate(iso: string): string {
+  const date = parseIsoDate(iso);
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yy = String(date.getFullYear()).slice(-2);
+  return `${dd}/${mm}/${yy}`;
+}
+
+export function addMinutesToHhmm(hhmm: string, minutes: number): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  const total = h * 60 + m + minutes;
+  const endH = Math.floor(total / 60) % 24;
+  const endM = total % 60;
+  return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+}
+
+export function formatTimeRange(startHhmm: string, durationMinutes: number): string {
+  const endHhmm = addMinutesToHhmm(startHhmm, durationMinutes);
+  return `${formatTimeLabel(startHhmm)} – ${formatTimeLabel(endHhmm)}`;
 }
 
 // Placeholder available time slots until the real availability endpoint ships.

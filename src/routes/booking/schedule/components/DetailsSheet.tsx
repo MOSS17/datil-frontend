@@ -19,6 +19,8 @@ interface DetailsSheetProps {
   location?: string | null;
   totalDuration: number;
   totalPrice: number;
+  dateLine?: string;
+  timeLine?: string;
 }
 
 export function DetailsSheet({
@@ -28,6 +30,8 @@ export function DetailsSheet({
   location,
   totalDuration,
   totalPrice,
+  dateLine,
+  timeLine,
 }: DetailsSheetProps) {
   useEffect(() => {
     if (!open) return;
@@ -118,6 +122,21 @@ export function DetailsSheet({
               ))}
             </ul>
           </section>
+          {dateLine || timeLine ? (
+            <section className="flex flex-col gap-300 border-t border-default py-500">
+              <h3 className="font-sans text-body-sm text-muted">Fecha y Hora</h3>
+              {dateLine ? (
+                <p className="font-sans text-body font-medium text-body-emphasis">
+                  {dateLine}
+                </p>
+              ) : null}
+              {timeLine ? (
+                <p className="font-sans text-body font-medium text-body-emphasis">
+                  {timeLine}
+                </p>
+              ) : null}
+            </section>
+          ) : null}
           {location ? (
             <section className="flex flex-col gap-200 border-t border-default py-500">
               <h3 className="font-sans text-body-sm text-muted">Lugar</h3>
