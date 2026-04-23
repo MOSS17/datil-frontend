@@ -190,7 +190,7 @@ export default function ConfirmBookingPage() {
     setIsSubmitting(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 400));
-      navigate(`/${slug}`);
+      navigate(`/${slug}/confirmada`);
     } finally {
       setIsSubmitting(false);
     }

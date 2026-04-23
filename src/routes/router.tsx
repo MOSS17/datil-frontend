@@ -26,6 +26,9 @@ const ReservationPage = lazy(() => import('./booking/reservation/ReservationPage
 const BookingSchedulePage = lazy(() => import('./booking/schedule/SchedulePage'));
 const DatosPage = lazy(() => import('./booking/datos/DatosPage'));
 const ConfirmBookingPage = lazy(() => import('./booking/confirmar/ConfirmBookingPage'));
+const ReservationConfirmedPage = lazy(
+  () => import('./booking/confirmada/ReservationConfirmedPage'),
+);
 
 function SuspenseWrapper({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={null}>{children}</Suspense>;
@@ -244,6 +247,14 @@ export const router = createBrowserRouter([
         element: (
           <SuspenseWrapper>
             <ConfirmBookingPage />
+          </SuspenseWrapper>
+        ),
+      },
+      {
+        path: 'confirmada',
+        element: (
+          <SuspenseWrapper>
+            <ReservationConfirmedPage />
           </SuspenseWrapper>
         ),
       },

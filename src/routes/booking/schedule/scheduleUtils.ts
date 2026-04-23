@@ -84,6 +84,10 @@ const SPANISH_WEEKDAYS = [
   'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado',
 ] as const;
 
+const SPANISH_WEEKDAYS_SHORT = [
+  'Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb',
+] as const;
+
 function parseIsoDate(iso: string): Date {
   const [y, m, d] = iso.split('-').map(Number);
   return new Date(y, m - 1, d);
@@ -98,6 +102,12 @@ export function formatFullDateWithYear(iso: string): string {
   const date = parseIsoDate(iso);
   const month = MONTH_NAMES[date.getMonth()].toLowerCase();
   return `${SPANISH_WEEKDAYS[date.getDay()]}, ${date.getDate()} de ${month} de ${date.getFullYear()}`;
+}
+
+export function formatFullDateShortWeekday(iso: string): string {
+  const date = parseIsoDate(iso);
+  const month = MONTH_NAMES[date.getMonth()].toLowerCase();
+  return `${SPANISH_WEEKDAYS_SHORT[date.getDay()]}, ${date.getDate()} de ${month} de ${date.getFullYear()}`;
 }
 
 export function formatShortDate(iso: string): string {
