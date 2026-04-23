@@ -23,7 +23,7 @@ const BankDetailsPage = lazy(() => import('./dashboard/BankDetailsPage'));
 const BookingLayout = lazy(() => import('./booking/BookingLayout'));
 const BusinessPage = lazy(() => import('./booking/business/BusinessPage'));
 const ReservationPage = lazy(() => import('./booking/reservation/ReservationPage'));
-const SelectTimePage = lazy(() => import('./booking/SelectTimePage'));
+const BookingSchedulePage = lazy(() => import('./booking/schedule/SchedulePage'));
 const ConfirmBookingPage = lazy(() => import('./booking/ConfirmBookingPage'));
 
 function SuspenseWrapper({ children }: { children: React.ReactNode }) {
@@ -226,7 +226,7 @@ export const router = createBrowserRouter([
         path: 'horario',
         element: (
           <SuspenseWrapper>
-            <SelectTimePage />
+            <BookingSchedulePage />
           </SuspenseWrapper>
         ),
       },

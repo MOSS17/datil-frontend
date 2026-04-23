@@ -13,6 +13,9 @@ export interface BookingContextValue {
   removeSelection: (id: string) => void;
   clearSelections: () => void;
   countForService: (serviceId: string) => number;
+  scheduledDate: string | null;
+  scheduledTime: string | null;
+  setSchedule: (date: string | null, time: string | null) => void;
 }
 
 export const BookingContext = createContext<BookingContextValue | null>(null);
