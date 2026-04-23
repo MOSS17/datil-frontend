@@ -13,6 +13,7 @@ import {
   useService,
   useUpdateService,
 } from '@/api/hooks/useServices';
+import { applyApiErrors } from '@/api/formErrors';
 import { ErrorState } from '../components/ErrorState';
 import { AgregarComplementos } from './components/AgregarComplementos';
 import { ExtraInfoAside } from './components/ExtraInfoAside';
@@ -87,16 +88,22 @@ export default function ServiceFormPage({ mode, kind = 'service' }: ServiceFormP
   const isActive = methods.watch('isActive');
 
   const onSubmit = methods.handleSubmit(async (values) => {
-    if (mode === 'create') {
-      await createService.mutateAsync(formToCreateRequest(values, isExtra));
-      // TODO: persist values.extrasGroupIds once the service-extras hooks land.
+    try {
+      if (mode === 'create') {
+        await createService.mutateAsync(formToCreateRequest(values, isExtra));
+      } else {
+        await updateService.mutateAsync({
+          id: serviceId,
+          data: formToCreateRequest(values, serviceQuery.data?.is_extra ?? isExtra),
+        });
+      }
+      // Linking extras currently goes through a separate flow — the backend API
+      // attaches individual extra services (POST /services/:id/extras with {extra_id}),
+      // not the "extras groups" (category IDs) this form collects. Hooks exist in
+      // useServices.ts (useAddServiceExtra/useRemoveServiceExtra) for a future UI.
       navigate(copy.backPath);
-    } else {
-      await updateService.mutateAsync({
-        id: serviceId,
-        data: formToCreateRequest(values, serviceQuery.data?.is_extra ?? isExtra),
-      });
-      navigate(copy.backPath);
+    } catch (err) {
+      applyApiErrors(err, methods.setError, { duration: 'durationMinutes' });
     }
   });
 

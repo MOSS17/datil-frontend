@@ -33,3 +33,5 @@ export const CALENDAR_PROVIDER = {
 export type CalendarProvider = (typeof CALENDAR_PROVIDER)[keyof typeof CALENDAR_PROVIDER];
 
 export const TOKEN_KEY = 'datil_token';
+export const REFRESH_TOKEN_KEY = 'datil_refresh_token';
+export const USER_KEY = 'datil_user';

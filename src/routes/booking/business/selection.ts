@@ -21,7 +21,7 @@ export function groupExtrasByCategory(
   }
   return categories
     .filter((cat) => byCategory.has(cat.id))
-    .sort((a, b) => a.display_order - b.display_order)
+    .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
     .map((category) => ({
       category,
       extras: (byCategory.get(category.id) ?? []).sort((a, b) =>
@@ -48,7 +48,7 @@ export function groupServicesByMainCategory(
   }
   return categories
     .filter((cat) => byCategory.has(cat.id))
-    .sort((a, b) => a.display_order - b.display_order)
+    .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
     .map((category) => ({
       category,
       services: (byCategory.get(category.id) ?? []).sort((a, b) =>

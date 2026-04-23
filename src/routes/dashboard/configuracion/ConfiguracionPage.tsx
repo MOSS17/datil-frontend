@@ -3,6 +3,7 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Card } from '@/components/ui/Card';
 import { useMyBusiness, useUpdateBusiness } from '@/api/hooks/useBusiness';
+import { applyApiErrors } from '@/api/formErrors';
 import { PageHeader } from '../components/PageHeader';
 import { ErrorState } from '../components/ErrorState';
 import { configuracionSchema, type ConfiguracionFormValues } from './schema';
@@ -29,18 +30,18 @@ export default function ConfiguracionPage() {
     });
   }, [business, methods]);
 
-  // TODO(autosave): no visible "Guardar Cambios" button in the reference design.
-  // Wire up auto-save on blur / debounced save when product behavior is decided.
+  // Slug stays in the form for visual continuity but the backend PUT body
+  // has no url/slug field yet — changes to this input are intentionally dropped.
   const onSubmit = methods.handleSubmit(async (values) => {
     if (!business) return;
-    await updateBusiness.mutateAsync({
-      id: business.id,
-      data: {
+    try {
+      await updateBusiness.mutateAsync({
         name: values.name,
-        slug: values.slug,
         description: values.description ?? '',
-      },
-    });
+      });
+    } catch (err) {
+      applyApiErrors(err, methods.setError);
+    }
   });
 
   return (

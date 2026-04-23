@@ -9,4 +9,31 @@ export interface Business {
   bank_name: string;
   bank_holder: string;
   created_at: string;
+  updated_at?: string;
+}
+
+export interface BusinessApi {
+  id: string;
+  name: string;
+  location: string | null;
+  description: string | null;
+  logo_url: string | null;
+  url: string;
+  beneficiary_clabe: string | null;
+  bank_name: string | null;
+  beneficiary_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UpdateBusinessRequest {
+  name: string;
+  location?: string | null;
+  description?: string | null;
+}
+
+export interface UpdateBankRequest {
+  beneficiary_clabe: string;
+  bank_name: string;
+  beneficiary_name: string;
 }
