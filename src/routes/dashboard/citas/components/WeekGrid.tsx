@@ -80,6 +80,72 @@ export function WeekGrid({
     return Math.max(0, Math.min(totalMinutes, snapped));
   };
 
+  // Blocked minute ranges (appointments + personal time) indexed by day.
+  // Used while dragging a new-range selection so the end of the drag can't
+  // spill into an already-occupied slot. `minutesSinceStart` omitted from
+  // deps intentionally: it closes over a stable `startHour`.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const blockedByDay = useMemo(() => {
+    const map: Array<Array<[number, number]>> = Array.from(
+      { length: 7 },
+      () => [],
+    );
+    for (const a of appointments) {
+      const start = new Date(a.start_time);
+      const end = new Date(a.end_time);
+      const dayIdx = days.findIndex((d) => isSameDay(d, start));
+      if (dayIdx === -1) continue;
+      const s = minutesSinceStart(start);
+      const e = minutesSinceStart(end);
+      if (e > s) map[dayIdx].push([s, e]);
+    }
+    for (const pt of personalTimes) {
+      if (!pt.date) continue;
+      const y = Number(pt.date.slice(0, 4));
+      const m = Number(pt.date.slice(5, 7)) - 1;
+      const d = Number(pt.date.slice(8, 10));
+      const dayIdx = days.findIndex(
+        (day) =>
+          day.getFullYear() === y && day.getMonth() === m && day.getDate() === d,
+      );
+      if (dayIdx === -1) continue;
+      if (pt.start_time && pt.end_time) {
+        const [sh, sm] = pt.start_time.split(':').map(Number);
+        const [eh, em] = pt.end_time.split(':').map(Number);
+        const s = (sh - startHour) * 60 + sm;
+        const e = (eh - startHour) * 60 + em;
+        if (e > s) map[dayIdx].push([s, e]);
+      } else {
+        map[dayIdx].push([0, totalMinutes]);
+      }
+    }
+    return map;
+  }, [appointments, personalTimes, days, startHour, totalMinutes]);
+
+  // Clamp a drag end so the selected range [min(start,end), max(start,end)]
+  // never overlaps a blocked interval. Start is assumed to land in free
+  // space (cards stop pointer-down propagation), so we only need to cap the
+  // far edge of the drag.
+  const clampDragEnd = (
+    dayIndex: number,
+    start: number,
+    candidate: number,
+  ): number => {
+    const blocked = blockedByDay[dayIndex] ?? [];
+    if (candidate >= start) {
+      let limit = totalMinutes;
+      for (const [bs] of blocked) {
+        if (bs >= start && bs < limit) limit = bs;
+      }
+      return Math.min(candidate, limit);
+    }
+    let limit = 0;
+    for (const [, be] of blocked) {
+      if (be <= start && be > limit) limit = be;
+    }
+    return Math.max(candidate, limit);
+  };
+
   useEffect(() => {
     if (!drag) return;
 
@@ -90,9 +156,14 @@ export function WeekGrid({
       if (!cell) return;
       const rect = cell.getBoundingClientRect();
       const y = e.clientY - rect.top;
-      const endMinutes = yToSnappedMinutes(y);
+      const raw = yToSnappedMinutes(y);
+      const endMinutes = clampDragEnd(current.dayIndex, current.startMinutes, raw);
       if (endMinutes !== current.endMinutes) {
-        setDrag({ ...current, endMinutes, moved: true });
+        setDrag({
+          ...current,
+          endMinutes,
+          moved: current.moved || endMinutes !== current.startMinutes,
+        });
       }
     };
 
@@ -102,7 +173,8 @@ export function WeekGrid({
       let startM = Math.min(current.startMinutes, current.endMinutes);
       let endM = Math.max(current.startMinutes, current.endMinutes);
       if (!current.moved || endM - startM < SNAP_MINUTES) {
-        endM = Math.min(totalMinutes, startM + 60);
+        const extended = Math.min(totalMinutes, startM + 60);
+        endM = clampDragEnd(current.dayIndex, startM, extended);
       }
       if (endM <= startM) endM = startM + SNAP_MINUTES;
 

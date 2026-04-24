@@ -85,6 +85,62 @@ export function DayView({
     return Math.max(0, Math.min(totalMinutes, snapped));
   };
 
+  // Blocked minute ranges on the selected day (appointments + personal
+  // time). Used to clamp a new-range drag so it can't spill into an
+  // occupied slot.
+  const blocked = useMemo(() => {
+    const out: Array<[number, number]> = [];
+    for (const a of appointments) {
+      const start = new Date(a.start_time);
+      if (!isSameDay(start, selectedDay)) continue;
+      const s = minutesSinceStart(start);
+      const e = minutesSinceStart(new Date(a.end_time));
+      if (e > s) out.push([s, e]);
+    }
+    for (const pt of personalTimes) {
+      if (!pt.date) continue;
+      const y = Number(pt.date.slice(0, 4));
+      const m = Number(pt.date.slice(5, 7)) - 1;
+      const d = Number(pt.date.slice(8, 10));
+      if (
+        selectedDay.getFullYear() !== y ||
+        selectedDay.getMonth() !== m ||
+        selectedDay.getDate() !== d
+      )
+        continue;
+      if (pt.start_time && pt.end_time) {
+        const [sh, sm] = pt.start_time.split(':').map(Number);
+        const [eh, em] = pt.end_time.split(':').map(Number);
+        const s = (sh - startHour) * 60 + sm;
+        const e = (eh - startHour) * 60 + em;
+        if (e > s) out.push([s, e]);
+      } else {
+        out.push([0, totalMinutes]);
+      }
+    }
+    return out;
+  }, [appointments, personalTimes, selectedDay, startHour, totalMinutes]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const clampDragEnd = (start: number, candidate: number): number => {
+    if (candidate >= start) {
+      let limit = totalMinutes;
+      for (const [bs] of blocked) {
+        if (bs >= start && bs < limit) limit = bs;
+      }
+      return Math.min(candidate, limit);
+    }
+    let limit = 0;
+    for (const [, be] of blocked) {
+      if (be <= start && be > limit) limit = be;
+    }
+    return Math.max(candidate, limit);
+  };
+  // Ref pattern so the drag's `useEffect` closure always sees the latest
+  // clamp function without having to re-subscribe pointer listeners when
+  // `blocked` changes.
+  const clampDragEndRef = useRef(clampDragEnd);
+  clampDragEndRef.current = clampDragEnd;
+
   useEffect(() => {
     if (!drag) return;
     const handleMove = (e: PointerEvent) => {
@@ -92,9 +148,14 @@ export function DayView({
       if (!current || !colRef.current) return;
       const rect = colRef.current.getBoundingClientRect();
       const y = e.clientY - rect.top;
-      const endMinutes = yToSnappedMinutes(y);
+      const raw = yToSnappedMinutes(y);
+      const endMinutes = clampDragEndRef.current(current.startMinutes, raw);
       if (endMinutes !== current.endMinutes) {
-        setDrag({ ...current, endMinutes, moved: true });
+        setDrag({
+          ...current,
+          endMinutes,
+          moved: current.moved || endMinutes !== current.startMinutes,
+        });
       }
     };
     const handleUp = () => {
@@ -103,7 +164,8 @@ export function DayView({
       let startM = Math.min(current.startMinutes, current.endMinutes);
       let endM = Math.max(current.startMinutes, current.endMinutes);
       if (!current.moved || endM - startM < SNAP_MINUTES) {
-        endM = Math.min(totalMinutes, startM + 60);
+        const extended = Math.min(totalMinutes, startM + 60);
+        endM = clampDragEndRef.current(startM, extended);
       }
       if (endM <= startM) endM = startM + SNAP_MINUTES;
       onSelectRange?.({
