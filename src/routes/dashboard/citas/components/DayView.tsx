@@ -83,6 +83,15 @@ export function DayView({
   const dragRef = useRef<DragState | null>(null);
   dragRef.current = drag;
 
+  // Current time tick, refreshed once a minute so the "now" indicator
+  // moves down as real time advances.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+  const showNowLine = today ? isSameDay(selectedDay, today) : false;
+
   const yToSnappedMinutes = (y: number): number => {
     const raw = y / pxPerMinute;
     const snapped = Math.round(raw / SNAP_MINUTES) * SNAP_MINUTES;
@@ -427,6 +436,16 @@ export function DayView({
                 </button>
               );
             })}
+
+            {showNowLine && (
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 z-10 h-0 border-t-2 border-accent"
+                style={{ top: minutesSinceStart(now) * pxPerMinute }}
+              >
+                <div className="absolute -left-[6px] -top-[7px] h-[12px] w-[12px] rounded-full bg-surface-accent" />
+              </div>
+            )}
           </div>
         </div>
       </div>

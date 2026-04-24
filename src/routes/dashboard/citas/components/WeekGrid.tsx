@@ -74,6 +74,19 @@ export function WeekGrid({
   const dragRef = useRef<DragState | null>(null);
   dragRef.current = drag;
 
+  // Current time tick, refreshed once a minute, so the "now" indicator
+  // moves down as real time advances without requiring the parent to pass
+  // a live date.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+  const todayIndex = useMemo(() => {
+    if (!today) return -1;
+    return days.findIndex((d) => isSameDay(d, today));
+  }, [days, today]);
+
   const pxPerMinute = ROW_HEIGHT_PX / 60;
   const totalMinutes = (endHour - startHour + 1) * 60;
   const minutesSinceStart = (d: Date) => (d.getHours() - startHour) * 60 + d.getMinutes();
@@ -498,6 +511,16 @@ export function WeekGrid({
                       <AppointmentCard appointment={a.appointment} className="h-full" />
                     </button>
                   ))}
+
+                {dayIdx === todayIndex && (
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-0 z-10 h-0 border-t-2 border-accent"
+                    style={{ top: minutesSinceStart(now) * pxPerMinute }}
+                  >
+                    <div className="absolute -left-[6px] -top-[7px] h-[12px] w-[12px] rounded-full bg-surface-accent" />
+                  </div>
+                )}
               </div>
             );
           })}
