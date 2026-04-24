@@ -3,8 +3,13 @@ import { Plus } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { useCategories, useCreateCategory } from '@/api/hooks/useCategories';
+import {
+  useCategories,
+  useCreateCategory,
+  useUpdateCategory,
+} from '@/api/hooks/useCategories';
 import { useServices } from '@/api/hooks/useServices';
+import type { Category } from '@/api/types/categories';
 import { PageHeader } from '../components/PageHeader';
 import { ErrorState } from '../components/ErrorState';
 import { CategoryCard } from './components/CategoryCard';
@@ -47,11 +52,13 @@ export default function ServicesPage() {
   );
   const [filterCategoryId, setFilterCategoryId] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const categoriesQuery = useCategories();
   const servicesQuery = useServices();
   const createCategory = useCreateCategory();
+  const updateCategory = useUpdateCategory();
 
   const isExtras = tab === 'complementos';
 
@@ -64,24 +71,50 @@ export default function ServicesPage() {
     return groupServicesByCategory(scoped, services, isExtras);
   }, [categoriesQuery.data, servicesQuery.data, filterCategoryId, isExtras]);
 
-  const handleCreate = async (values: CategoryFormValues) => {
+  const handleSubmitCategory = async (values: CategoryFormValues) => {
     setSubmitError(null);
     try {
-      await createCategory.mutateAsync({
-        name: values.name,
-        allow_multiple: values.allowMultiple,
-      });
+      if (editingCategory) {
+        await updateCategory.mutateAsync({
+          id: editingCategory.id,
+          data: { name: values.name, allow_multiple: values.allowMultiple },
+        });
+      } else {
+        await createCategory.mutateAsync({
+          name: values.name,
+          allow_multiple: values.allowMultiple,
+        });
+      }
       setDrawerOpen(false);
+      setEditingCategory(null);
     } catch (error) {
       setSubmitError(
-        error instanceof Error ? error.message : 'No se pudo crear la categoría.',
+        error instanceof Error
+          ? error.message
+          : editingCategory
+            ? 'No se pudo actualizar la categoría.'
+            : 'No se pudo crear la categoría.',
       );
     }
   };
 
   const openCreate = () => {
     setSubmitError(null);
+    setEditingCategory(null);
     setDrawerOpen(true);
+  };
+
+  const openEdit = (categoryId: string) => {
+    const cat = (categoriesQuery.data ?? []).find((c) => c.id === categoryId);
+    if (!cat) return;
+    setSubmitError(null);
+    setEditingCategory(cat);
+    setDrawerOpen(true);
+  };
+
+  const closeDrawer = () => {
+    setDrawerOpen(false);
+    setEditingCategory(null);
   };
 
   const isLoading = categoriesQuery.isLoading || servicesQuery.isLoading;
@@ -137,6 +170,7 @@ export default function ServicesPage() {
                     key={group.category.id}
                     group={group}
                     isExtras={isExtras}
+                    onEditCategory={openEdit}
                     onAddService={(categoryId) => {
                       const base = isExtras
                         ? '/dashboard/servicios/complementos/nuevo'
@@ -159,11 +193,12 @@ export default function ServicesPage() {
 
       <NewCategoryDrawer
         open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onSubmit={handleCreate}
-        isSubmitting={createCategory.isPending}
+        onClose={closeDrawer}
+        onSubmit={handleSubmitCategory}
+        isSubmitting={createCategory.isPending || updateCategory.isPending}
         submitError={submitError}
         isExtras={isExtras}
+        category={editingCategory}
       />
     </div>
   );
