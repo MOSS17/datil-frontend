@@ -29,7 +29,6 @@ interface DayViewProps {
 
 const ROW_HEIGHT_PX = 96;
 const SNAP_MINUTES = 15;
-const VIEWPORT_HEIGHT_PX = 600;
 
 function minutesToHHMM(startHour: number, minutesSinceStart: number): string {
   const total = startHour * 60 + Math.max(0, minutesSinceStart);
@@ -78,7 +77,7 @@ export function DayView({
   const minutesSinceStart = (d: Date) => (d.getHours() - startHour) * 60 + d.getMinutes();
 
   const colRef = useRef<HTMLDivElement | null>(null);
-  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const gridRef = useRef<HTMLDivElement | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const dragRef = useRef<DragState | null>(null);
   dragRef.current = drag;
@@ -260,10 +259,11 @@ export function DayView({
       )
     : 0;
 
-  // Scroll the interior so business hours (or current time on today) are
-  // in view on mount and whenever the selected day changes.
+  // Scroll the main page so business hours (or current time on today) are
+  // in view on mount and whenever the selected day changes. Mobile uses the
+  // page's native scroll rather than an inner scroll container.
   useLayoutEffect(() => {
-    const el = scrollRef.current;
+    const el = gridRef.current;
     if (!el) return;
     let targetMinutes: number;
     if (today && isSameDay(selectedDay, today)) {
@@ -274,7 +274,9 @@ export function DayView({
     } else {
       targetMinutes = Math.max(0, offHours[0][1] - 60);
     }
-    el.scrollTo({ top: targetMinutes * pxPerMinute, behavior: 'auto' });
+    const rect = el.getBoundingClientRect();
+    const pageY = rect.top + window.scrollY + targetMinutes * pxPerMinute;
+    window.scrollTo({ top: Math.max(0, pageY - 80), behavior: 'auto' });
   }, [selectedDay, offHours, pxPerMinute, today]);
 
   return (
@@ -315,14 +317,10 @@ export function DayView({
       </div>
 
       <div
-        ref={scrollRef}
-        className="overflow-y-auto rounded-lg"
-        style={{ maxHeight: VIEWPORT_HEIGHT_PX }}
+        ref={gridRef}
+        className="relative grid rounded-lg"
+        style={{ gridTemplateColumns: '56px minmax(0, 1fr)' }}
       >
-        <div
-          className="relative grid"
-          style={{ gridTemplateColumns: '56px minmax(0, 1fr)' }}
-        >
           <div className="flex flex-col">
             {hours.map((h, idx) => (
               <div
@@ -453,7 +451,6 @@ export function DayView({
             )}
           </div>
         </div>
-      </div>
     </div>
   );
 }
