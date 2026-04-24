@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { AuthContext } from './AuthContext';
 import {
+  getRefreshToken,
   getStoredUser,
   getToken,
   isTokenExpired,
@@ -9,6 +10,7 @@ import {
   setStoredUser,
   setToken,
 } from './token';
+import { refreshAccessToken } from './refresh';
 import type { User } from '@/api/types/auth';
 
 const DEV_BYPASS_AUTH = false;
@@ -33,15 +35,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // (see `login` below) so we don't need a /auth/me round-trip on every
     // boot — the access token alone is enough to know the session is live.
     const storedToken = getToken();
-    if (!storedToken || isTokenExpired(storedToken)) {
+    const storedUser = getStoredUser();
+
+    if (storedToken && !isTokenExpired(storedToken)) {
+      setTokenState(storedToken);
+      setUser(storedUser);
+      setIsLoading(false);
+      return;
+    }
+
+    // Access token missing or expired. If the refresh token is still good,
+    // try to swap it for a fresh pair rather than booting the user back to
+    // /login (which would waste a perfectly valid refresh token and
+    // interrupt a returning session). Falls through to the wipe-and-idle
+    // branch below if refresh fails or there's no refresh token to use.
+    const refresh = getRefreshToken();
+    if (!refresh || isTokenExpired(refresh) || !storedUser) {
       removeToken();
       setIsLoading(false);
       return;
     }
 
-    setTokenState(storedToken);
-    setUser(getStoredUser());
-    setIsLoading(false);
+    let cancelled = false;
+    refreshAccessToken().then((newAccess) => {
+      if (cancelled) return;
+      if (newAccess) {
+        setTokenState(newAccess);
+        setUser(storedUser);
+      } else {
+        removeToken();
+      }
+      setIsLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const login = useCallback(

@@ -1,4 +1,5 @@
 import { getToken, removeToken } from '@/auth/token';
+import { refreshAccessToken } from '@/auth/refresh';
 import { resolveMock } from '@/api/mocks/router';
 
 export class ApiError extends Error {
@@ -21,6 +22,32 @@ interface ApiOptions {
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
+// Endpoints whose 401 we must NOT try to refresh against — a 401 here
+// means the credentials themselves are bad, not that the access token
+// expired. Also prevents recursion: if /auth/refresh itself 401s, we'd
+// otherwise try to refresh it again.
+const REFRESH_SKIP = /^\/auth\/(login|refresh|signup)/;
+
+function buildRequest(
+  endpoint: string,
+  method: string,
+  body: unknown,
+  customHeaders: Record<string, string>,
+): Request {
+  const headers: Record<string, string> = { ...customHeaders };
+  const token = getToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const isFormData = body instanceof FormData;
+  if (!isFormData && body !== undefined) headers['Content-Type'] = 'application/json';
+
+  return new Request(`${BASE_URL}${endpoint}`, {
+    method,
+    headers,
+    body: isFormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
+  });
+}
+
 export async function apiClient<T>(endpoint: string, options: ApiOptions = {}): Promise<T> {
   const { method = 'GET', body, headers: customHeaders = {} } = options;
 
@@ -30,23 +57,16 @@ export async function apiClient<T>(endpoint: string, options: ApiOptions = {}): 
     return mocked as Promise<T>;
   }
 
-  const headers: Record<string, string> = { ...customHeaders };
+  let response = await fetch(buildRequest(endpoint, method, body, customHeaders));
 
-  const token = getToken();
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  if (response.status === 401 && !REFRESH_SKIP.test(endpoint)) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      // Retry with the freshly-minted access token. buildRequest reads
+      // from getToken(), which now returns the new value.
+      response = await fetch(buildRequest(endpoint, method, body, customHeaders));
+    }
   }
-
-  const isFormData = body instanceof FormData;
-  if (!isFormData) {
-    headers['Content-Type'] = 'application/json';
-  }
-
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
-    method,
-    headers,
-    body: isFormData ? body : body ? JSON.stringify(body) : undefined,
-  });
 
   if (response.status === 401) {
     removeToken();
