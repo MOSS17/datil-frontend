@@ -179,10 +179,12 @@ const HANDLERS: MockHandler[] = [
       customer_name: formField(body, 'customer_name') ?? 'Cliente Demo',
       customer_phone: formField(body, 'customer_phone') ?? '+5215555555555',
       start_time: formField(body, 'start_time') ?? new Date().toISOString(),
-      payment_proof_url: body instanceof FormData && body.get('payment_proof')
-        ? 'https://placehold.co/600x400'
-        : '',
+      advance_payment_image_url:
+        body instanceof FormData && body.get('payment_proof')
+          ? 'https://placehold.co/600x400'
+          : null,
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     }),
   },
 
@@ -263,6 +265,31 @@ const HANDLERS: MockHandler[] = [
     handler: () => undefined,
   },
 
+  // ── Dashboard (authed) ──────────────────────────────────────────────────
+  {
+    method: 'GET',
+    pattern: /^\/dashboard$/,
+    handler: () => {
+      const active = mockAppointments.filter((a) => a.status !== 'cancelled');
+      const upcoming = [...active]
+        .filter((a) => new Date(a.end_time).getTime() >= Date.now())
+        .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+        .slice(0, 10);
+      const latest = [...active]
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 10);
+      return {
+        today_count: 1,
+        week_count: 3,
+        monthly_income: active
+          .filter((a) => a.status === 'completed')
+          .reduce((sum, a) => sum + a.total, 0),
+        upcoming,
+        latest,
+      };
+    },
+  },
+
   // ── Appointments ────────────────────────────────────────────────────────
   { method: 'GET', pattern: /^\/appointments$/, handler: () => mockAppointments },
   {
@@ -279,6 +306,17 @@ const HANDLERS: MockHandler[] = [
       id: nowId('apt'),
       ...(typeof body === 'object' && body !== null ? body : {}),
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }),
+  },
+  {
+    method: 'PUT',
+    pattern: /^\/appointments\/([^/]+)$/,
+    handler: ({ body }, [id]) => ({
+      ...(mockAppointments.find((a) => a.id === id) ?? mockAppointments[0]),
+      ...(typeof body === 'object' && body !== null ? body : {}),
+      id,
+      updated_at: new Date().toISOString(),
     }),
   },
   {
@@ -287,6 +325,7 @@ const HANDLERS: MockHandler[] = [
     handler: ({ body }, [id]) => ({
       ...(mockAppointments.find((a) => a.id === id) ?? mockAppointments[0]),
       ...(typeof body === 'object' && body !== null ? body : {}),
+      updated_at: new Date().toISOString(),
     }),
   },
   {
@@ -294,8 +333,14 @@ const HANDLERS: MockHandler[] = [
     pattern: /^\/appointments\/([^/]+)\/payment-proof$/,
     handler: (_ctx, [id]) => ({
       ...(mockAppointments.find((a) => a.id === id) ?? mockAppointments[0]),
-      payment_proof_url: 'https://placehold.co/600x400',
+      advance_payment_image_url: 'https://placehold.co/600x400',
+      updated_at: new Date().toISOString(),
     }),
+  },
+  {
+    method: 'DELETE',
+    pattern: /^\/appointments\/([^/]+)$/,
+    handler: () => undefined,
   },
 
   // ── Schedule ────────────────────────────────────────────────────────────

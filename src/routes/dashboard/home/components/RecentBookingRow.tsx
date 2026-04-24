@@ -13,7 +13,11 @@ interface RecentBookingRowProps {
 }
 
 export function RecentBookingRow({ appointment, now }: RecentBookingRowProps) {
-  const services = appointment.services.map((s) => s.service_name).join(' + ');
+  const services =
+    appointment.services
+      .map((s) => s.service_name)
+      .filter((name): name is string => Boolean(name))
+      .join(' + ') || 'Cita';
   const fresh = isRecentlyCreated(appointment.created_at, now);
   const start = new Date(appointment.start_time);
 

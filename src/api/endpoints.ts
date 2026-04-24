@@ -16,6 +16,7 @@ export const ENDPOINTS = {
   CATEGORIES: '/categories',
   SERVICES: '/services',
   APPOINTMENTS: '/appointments',
+  DASHBOARD: '/dashboard',
   SCHEDULE: {
     WORKDAYS: '/schedule/workdays',
     PERSONAL_TIME: '/schedule/personal-time',

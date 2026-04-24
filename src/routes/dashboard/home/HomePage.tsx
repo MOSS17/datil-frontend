@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Link2, Pin, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { useAppointments } from '@/api/hooks/useAppointments';
+import { useDashboard } from '@/api/hooks/useDashboard';
 import { useMyBusiness } from '@/api/hooks/useBusiness';
+import { useServices } from '@/api/hooks/useServices';
 import { useAuth } from '@/auth/AuthContext';
+import { enrichAppointments } from '@/lib/appointmentEnrich';
 import { PageHeader } from '../components/PageHeader';
 import { ErrorState } from '../components/ErrorState';
 import { MetricCard } from './components/MetricCard';
@@ -13,36 +15,38 @@ import { UpcomingAppointmentRow } from './components/UpcomingAppointmentRow';
 import { RecentBookingRow } from './components/RecentBookingRow';
 import { HomePageSkeleton } from './components/HomePageSkeleton';
 import {
-  computeMetrics,
   findNextUpId,
   formatMetricRevenue,
   formatMonthYear,
   formatShortDate,
   formatWeekRange,
   getFirstName,
-  getRecentBookings,
-  getUpcoming,
 } from './utils';
 
 export default function HomePage() {
   const { user } = useAuth();
   const { data: business } = useMyBusiness();
-  const { data: appointments, isLoading, error, refetch } = useAppointments();
+  const { data: dashboard, isLoading, error, refetch } = useDashboard();
+  const { data: services } = useServices();
   const navigate = useNavigate();
 
   const now = useMemo(() => new Date(), []);
   const firstName = getFirstName(user?.name ?? '');
 
-  const derived = useMemo(() => {
-    const list = appointments ?? [];
-    return {
-      metrics: computeMetrics(list, now),
-      upcoming: getUpcoming(list, now, 5),
-      recent: getRecentBookings(list, 5),
-      nextUpId: findNextUpId(list, now),
-      isEmpty: list.length === 0,
-    };
-  }, [appointments, now]);
+  const upcoming = useMemo(
+    () => enrichAppointments(dashboard?.upcoming ?? [], services),
+    [dashboard?.upcoming, services],
+  );
+  const latest = useMemo(
+    () => enrichAppointments(dashboard?.latest ?? [], services),
+    [dashboard?.latest, services],
+  );
+  const nextUpId = useMemo(() => findNextUpId(upcoming, now), [upcoming, now]);
+  const isEmpty =
+    (dashboard?.today_count ?? 0) === 0 &&
+    (dashboard?.week_count ?? 0) === 0 &&
+    upcoming.length === 0 &&
+    latest.length === 0;
 
   const handleShare = async () => {
     if (!business) return;
@@ -93,7 +97,7 @@ export default function HomePage() {
     );
   }
 
-  if (error) {
+  if (error || !dashboard) {
     return (
       <div className={wrapper}>
         {header}
@@ -107,7 +111,6 @@ export default function HomePage() {
     );
   }
 
-  const { metrics, upcoming, recent, nextUpId, isEmpty } = derived;
   const currentYear = now.getFullYear();
 
   const mobileActions = (
@@ -149,23 +152,15 @@ export default function HomePage() {
           icon={<Pin size={16} strokeWidth={1.75} />}
           label="Citas de Hoy"
           meta={formatShortDate(now)}
-          value={String(metrics.todayCount)}
-          caption={
-            metrics.todayCount > 0
-              ? `${metrics.todayCompleted} completadas, ${metrics.todayPending} pendientes`
-              : 'Sin citas hoy'
-          }
+          value={String(dashboard.today_count)}
+          caption={dashboard.today_count > 0 ? undefined : 'Sin citas hoy'}
         />
         <MetricCard
           icon={<Pin size={16} strokeWidth={1.75} />}
           label="Esta Semana"
           meta={formatWeekRange(now)}
-          value={String(metrics.weekCount)}
-          caption={
-            metrics.weekCount > 0
-              ? `${metrics.weekCompleted} completadas, ${metrics.weekPending} pendientes`
-              : 'Sin citas esta semana'
-          }
+          value={String(dashboard.week_count)}
+          caption={dashboard.week_count > 0 ? undefined : 'Sin citas esta semana'}
         />
         <MetricCard
           icon={<Pin size={16} strokeWidth={1.75} />}
@@ -173,7 +168,7 @@ export default function HomePage() {
           labelMobile="Ingresos Totales"
           meta={formatMonthYear(now)}
           metaMobile={`${formatMonthYear(now).slice(0, 3)} ${now.getFullYear()}`}
-          value={formatMetricRevenue(metrics.monthRevenue)}
+          value={formatMetricRevenue(dashboard.monthly_income)}
         />
       </div>
 
@@ -232,19 +227,19 @@ export default function HomePage() {
               <h2 className="font-serif text-h6 text-heading">
                 Últimas Citas Agendadas
               </h2>
-              {recent.length > 0 && (
+              {latest.length > 0 && (
                 <span className="inline-flex min-h-500 min-w-500 items-center justify-center rounded-full bg-surface-accent px-100 py-25 font-sans text-body-sm font-medium text-on-color">
-                  {recent.length}
+                  {latest.length}
                 </span>
               )}
             </div>
             <div className="border-t border-subtle" />
-            {recent.length === 0 ? (
+            {latest.length === 0 ? (
               <p className="px-500 py-400 font-sans text-body-sm text-muted">
                 Aún no hay reservas recientes.
               </p>
             ) : (
-              recent.map((appt) => (
+              latest.map((appt) => (
                 <Fragment key={appt.id}>
                   <RecentBookingRow appointment={appt} now={now} />
                   <div className="border-t border-subtle" />
