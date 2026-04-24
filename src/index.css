@@ -24,9 +24,6 @@
   }
 }
 
-/* Explicit color utilities for `border-{name}` keys that Tailwind v4 +
-   legacy @config skips (these get scanned but never emit CSS from the
-   nested `border: { … }` config). Values mirror the Figma tokens. */
 @layer base {
   input[type="date"]::-webkit-calendar-picker-indicator,
   input[type="time"]::-webkit-calendar-picker-indicator,
@@ -39,15 +36,26 @@
   }
 }
 
-@layer utilities {
-  .border-default       { border-color: #e2dbcf; }
-  .border-subtle        { border-color: #f0ede6; }
-  .border-strong        { border-color: #160f03; }
-  .border-control       { border-color: #e8e5e0; }
-  .border-accent-subtle { border-color: #e5eef3; }
-  .border-error-subtle  { border-color: #efd2d2; }
-  .border-info          { border-color: #62899b; }
-  .border-info-subtle   { border-color: #e5eef3; }
-  .border-success-subtle{ border-color: #e5e8e2; }
-  .border-warning-subtle{ border-color: #f7ede1; }
-}
+/* Border-color utilities mirroring the Figma tokens. Defined via the v4
+   `@utility` directive (not `@layer utilities`) so responsive/state
+   variants like `md:border-default`, `hover:border-accent`, etc. generate
+   correctly. The v3-style nested `borderColor` keys in tailwind.config.js
+   never emitted variants under the @config bridge in v4 — this file is
+   now the single source of truth for these colors. */
+@utility border-default        { border-color: #e2dbcf; }
+@utility border-subtle         { border-color: #f0ede6; }
+@utility border-strong         { border-color: #160f03; }
+@utility border-control        { border-color: #e8e5e0; }
+@utility border-primary        { border-color: #2c2524; }
+@utility border-primary-hover  { border-color: #0b0909; }
+@utility border-accent         { border-color: #62899b; }
+@utility border-accent-subtle  { border-color: #e5eef3; }
+@utility border-error          { border-color: #ad1d1d; }
+@utility border-error-subtle   { border-color: #efd2d2; }
+@utility border-info           { border-color: #62899b; }
+@utility border-info-subtle    { border-color: #e5eef3; }
+@utility border-warning        { border-color: #ad8252; }
+@utility border-warning-subtle { border-color: #f7ede1; }
+@utility border-success        { border-color: #636f59; }
+@utility border-success-subtle { border-color: #e5e8e2; }
+@utility border-disabled       { border-color: #d7d5d5; }

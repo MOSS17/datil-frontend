@@ -69,7 +69,7 @@ export default function SchedulePage() {
         actions={<div className="hidden md:block">{saveButton}</div>}
       />
 
-      <div className="flex flex-col gap-600 border-default md:gap-0 md:rounded-lg md:border md:bg-surface md:overflow-hidden md:py-400">
+      <div className="flex flex-col gap-600 md:gap-0 md:rounded-lg md:border md:border-default md:bg-surface md:overflow-hidden md:py-400">
         {orderedDays.map((day, idx) => (
           <div key={day.day}>
             <DayRow

@@ -199,7 +199,7 @@ export default function DatosPage() {
               </p>
             </div>
 
-            <div className="flex flex-col gap-500 border-default md:rounded-lg md:border md:bg-surface md:p-600">
+            <div className="flex flex-col gap-500 md:rounded-lg md:border md:border-default md:bg-surface md:p-600">
               <div className="grid gap-500 md:grid-cols-2 md:gap-400">
                 <Input
                   label="Nombre"
