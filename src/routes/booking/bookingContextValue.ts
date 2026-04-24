@@ -1,4 +1,5 @@
 import { createContext } from 'react';
+import type { Appointment } from '@/api/types/appointments';
 
 export interface BookingSelection {
   id: string;
@@ -15,7 +16,14 @@ export interface BookingContextValue {
   countForService: (serviceId: string) => number;
   scheduledDate: string | null;
   scheduledTime: string | null;
-  setSchedule: (date: string | null, time: string | null) => void;
+  scheduledStart: string | null;
+  setSchedule: (
+    date: string | null,
+    time: string | null,
+    start: string | null,
+  ) => void;
+  reservedAppointment: Appointment | null;
+  setReservedAppointment: (appt: Appointment | null) => void;
 }
 
 export const BookingContext = createContext<BookingContextValue | null>(null);

@@ -21,4 +21,10 @@ export const ENDPOINTS = {
     PERSONAL_TIME: '/schedule/personal-time',
   },
   CALENDAR: '/calendar/integrations',
+  BOOK: (slug: string) => ({
+    page: `/book/${slug}`,
+    services: `/book/${slug}/services`,
+    availability: `/book/${slug}/availability`,
+    reserve: `/book/${slug}/reserve`,
+  }),
 } as const;

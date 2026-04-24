@@ -1,20 +1,22 @@
 import { Check } from 'lucide-react';
+import type { TimeSlot } from '@/api/types/booking';
 import { cn } from '@/lib/cn';
-import { formatTimeLabel } from '../scheduleUtils';
+import { extractHhmmFromRfc3339, formatTimeLabel } from '../scheduleUtils';
 
 interface TimeSlotListProps {
-  slots: readonly string[];
+  slots: TimeSlot[];
   selected: string | null;
-  onSelect: (hhmm: string) => void;
+  onSelect: (slot: TimeSlot) => void;
 }
 
 export function TimeSlotList({ slots, selected, onSelect }: TimeSlotListProps) {
   return (
-    <ul className="flex flex-col gap-300">
+    <ul className="flex max-h-[360px] flex-col gap-300 overflow-y-auto pr-200">
       {slots.map((slot) => {
-        const isSelected = slot === selected;
+        const isSelected = slot.start === selected;
+        const label = formatTimeLabel(extractHhmmFromRfc3339(slot.start));
         return (
-          <li key={slot}>
+          <li key={slot.start}>
             <button
               type="button"
               onClick={() => onSelect(slot)}
@@ -26,7 +28,7 @@ export function TimeSlotList({ slots, selected, onSelect }: TimeSlotListProps) {
                   : 'border-default bg-surface text-primary hover:bg-surface-secondary-subtle',
               )}
             >
-              <span>{formatTimeLabel(slot)}</span>
+              <span>{label}</span>
               {isSelected ? (
                 <Check size={16} strokeWidth={2} aria-hidden className="shrink-0" />
               ) : null}

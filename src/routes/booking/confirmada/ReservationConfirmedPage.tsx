@@ -1,8 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { CalendarDays, Check } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useBusinessBySlug } from '@/api/hooks/useBusiness';
-import { useServices } from '@/api/hooks/useServices';
+import { useBookingPage, useBookingServices } from '@/api/hooks/useBooking';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ErrorState } from '@/routes/dashboard/components/ErrorState';
@@ -30,8 +29,9 @@ export default function ReservationConfirmedPage() {
   const navigate = useNavigate();
   const { selections, scheduledDate, scheduledTime, clearSelections } = useBookingSelection();
 
-  const businessQuery = useBusinessBySlug(slug);
-  const servicesQuery = useServices();
+  const pageQuery = useBookingPage(slug);
+  const servicesQuery = useBookingServices(slug);
+  const business = pageQuery.data?.business;
 
   const servicesById = useMemo(
     () => buildServicesMap(servicesQuery.data ?? []),
@@ -86,8 +86,8 @@ export default function ReservationConfirmedPage() {
       ? formatTimeRange(scheduledTime, totals.duration)
       : null;
 
-  const isLoading = businessQuery.isLoading || servicesQuery.isLoading;
-  const queryError = businessQuery.error ?? servicesQuery.error;
+  const isLoading = pageQuery.isLoading || servicesQuery.isLoading;
+  const queryError = pageQuery.error ?? servicesQuery.error;
 
   useEffect(() => {
     if (isLoading) return;
@@ -103,7 +103,7 @@ export default function ReservationConfirmedPage() {
           <ErrorState
             message="No pudimos cargar tu confirmación."
             onRetry={() => {
-              businessQuery.refetch();
+              pageQuery.refetch();
               servicesQuery.refetch();
             }}
           />
@@ -153,9 +153,9 @@ export default function ReservationConfirmedPage() {
             <Divider />
           </>
         ) : null}
-        {businessQuery.data?.location ? (
+        {business?.location ? (
           <>
-            <DetailRow label="Lugar" value={businessQuery.data.location} />
+            <DetailRow label="Lugar" value={business.location} />
             <Divider />
           </>
         ) : null}
