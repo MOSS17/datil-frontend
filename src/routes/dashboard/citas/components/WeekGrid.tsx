@@ -325,39 +325,37 @@ export function WeekGrid({
     return out;
   }, [personalTimes, days, hours.length, pxPerMinute, startHour]);
 
-  // Scroll the interior so the first business hour of the week (or the
-  // current time if we're viewing the week that contains today) is visible
-  // near the top. Runs once after we know the scroll container's size.
+  // Scroll the interior on mount / week change. If the visible week
+  // contains today, center the current time in the scrollable viewport.
+  // Otherwise scroll so the earliest business hour sits near the top.
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    let targetMinutes: number | null = null;
     if (today) {
       const todayIdx = days.findIndex((d) => isSameDay(d, today));
       if (todayIdx !== -1) {
         const nowMin = today.getHours() * 60 + today.getMinutes();
-        targetMinutes = Math.max(0, nowMin - 60);
+        const target = nowMin * pxPerMinute - el.clientHeight / 2;
+        el.scrollTo({ top: Math.max(0, target), behavior: 'auto' });
+        return;
       }
     }
-    if (targetMinutes === null) {
-      let earliest = totalMinutes;
-      for (let i = 0; i < 7; i++) {
-        const off = offHoursByDay[i];
-        if (off.length === 0) {
-          earliest = 0;
-          break;
-        }
-        const firstOff = off[0];
-        if (firstOff[0] > 0) {
-          earliest = Math.min(earliest, 0);
-          break;
-        }
-        if (firstOff[1] < earliest) earliest = firstOff[1];
+    let earliest = totalMinutes;
+    for (let i = 0; i < 7; i++) {
+      const off = offHoursByDay[i];
+      if (off.length === 0) {
+        earliest = 0;
+        break;
       }
-      targetMinutes = earliest < totalMinutes ? Math.max(0, earliest - 60) : 0;
+      const firstOff = off[0];
+      if (firstOff[0] > 0) {
+        earliest = Math.min(earliest, 0);
+        break;
+      }
+      if (firstOff[1] < earliest) earliest = firstOff[1];
     }
-    el.scrollTo({ top: targetMinutes * pxPerMinute, behavior: 'auto' });
-    // Re-run when the week (and therefore off-hour layout) changes.
+    const fallbackMin = earliest < totalMinutes ? Math.max(0, earliest - 60) : 0;
+    el.scrollTo({ top: fallbackMin * pxPerMinute, behavior: 'auto' });
   }, [weekStart, offHoursByDay, pxPerMinute, totalMinutes, days, today]);
 
   return (
