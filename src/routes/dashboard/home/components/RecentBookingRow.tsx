@@ -11,9 +11,10 @@ import { StatusPill } from './StatusPill';
 interface RecentBookingRowProps {
   appointment: Appointment;
   now: Date;
+  onSelect?: (appointment: Appointment) => void;
 }
 
-export function RecentBookingRow({ appointment, now }: RecentBookingRowProps) {
+export function RecentBookingRow({ appointment, now, onSelect }: RecentBookingRowProps) {
   const services =
     appointment.services
       .map((s) => s.service_name)
@@ -23,7 +24,11 @@ export function RecentBookingRow({ appointment, now }: RecentBookingRowProps) {
   const start = new Date(appointment.start_time);
 
   return (
-    <div className="flex items-stretch justify-between gap-400 px-500 py-400">
+    <button
+      type="button"
+      onClick={() => onSelect?.(appointment)}
+      className="flex w-full items-stretch justify-between gap-400 px-500 py-400 text-left transition-colors hover:bg-surface-secondary-subtle focus:outline-none focus-visible:bg-surface-secondary-subtle"
+    >
       <div className="flex min-w-0 flex-col gap-100">
         <div className="flex flex-col-reverse gap-100 md:flex-row md:items-center">
           <p className="font-sans text-body font-medium text-body-emphasis truncate">
@@ -50,6 +55,6 @@ export function RecentBookingRow({ appointment, now }: RecentBookingRowProps) {
           {formatTimeAgo(appointment.created_at, now)}
         </p>
       </div>
-    </div>
+    </button>
   );
 }

@@ -7,14 +7,17 @@ import { Toast, type ToastVariant } from '@/components/ui/Toast';
 import { useDashboard } from '@/api/hooks/useDashboard';
 import { useMyBusiness } from '@/api/hooks/useBusiness';
 import { useServices } from '@/api/hooks/useServices';
+import { useCategories } from '@/api/hooks/useCategories';
 import { useAuth } from '@/auth/AuthContext';
 import { enrichAppointments } from '@/lib/appointmentEnrich';
+import type { Appointment } from '@/api/types/appointments';
 import { PageHeader } from '../components/PageHeader';
 import { ErrorState } from '../components/ErrorState';
 import { MetricCard } from './components/MetricCard';
 import { UpcomingAppointmentRow } from './components/UpcomingAppointmentRow';
 import { RecentBookingRow } from './components/RecentBookingRow';
 import { HomePageSkeleton } from './components/HomePageSkeleton';
+import { BookingDetailDrawer } from './components/BookingDetailDrawer';
 import {
   findNextUpId,
   formatMetricRevenue,
@@ -29,6 +32,7 @@ export default function HomePage() {
   const { data: business } = useMyBusiness();
   const { data: dashboard, isLoading, error, refetch } = useDashboard();
   const { data: services } = useServices();
+  const { data: categories } = useCategories();
   const navigate = useNavigate();
 
   const now = useMemo(() => new Date(), []);
@@ -36,6 +40,16 @@ export default function HomePage() {
   const [toast, setToast] = useState<{ message: string; variant: ToastVariant } | null>(
     null,
   );
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(
+    null,
+  );
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const handleSelectAppointment = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setDrawerOpen(true);
+  };
+  const closeDrawer = () => setDrawerOpen(false);
 
   const upcoming = useMemo(
     () => enrichAppointments(dashboard?.upcoming ?? [], services),
@@ -45,6 +59,12 @@ export default function HomePage() {
     () => enrichAppointments(dashboard?.latest ?? [], services),
     [dashboard?.latest, services],
   );
+  const selectedEnriched = useMemo(() => {
+    if (!selectedAppointment) return null;
+    const fromUpcoming = upcoming.find((a) => a.id === selectedAppointment.id);
+    const fromLatest = latest.find((a) => a.id === selectedAppointment.id);
+    return fromUpcoming ?? fromLatest ?? selectedAppointment;
+  }, [selectedAppointment, upcoming, latest]);
   const nextUpId = useMemo(() => findNextUpId(upcoming, now), [upcoming, now]);
   const isEmpty =
     (dashboard?.today_count ?? 0) === 0 &&
@@ -102,6 +122,25 @@ export default function HomePage() {
     />
   );
 
+  const drawerEl = (
+    <BookingDetailDrawer
+      appointment={selectedEnriched}
+      open={drawerOpen}
+      onClose={closeDrawer}
+      services={services ?? []}
+      categories={categories ?? []}
+      business={business}
+      onSaved={() => {
+        setToast({ message: 'Cita actualizada', variant: 'success' });
+      }}
+      onDeleted={() => {
+        setDrawerOpen(false);
+        setToast({ message: 'Cita eliminada', variant: 'success' });
+      }}
+      onError={(message) => setToast({ message, variant: 'error' })}
+    />
+  );
+
   if (isLoading) {
     return (
       <>
@@ -110,6 +149,7 @@ export default function HomePage() {
           <HomePageSkeleton />
         </div>
         {toastEl}
+        {drawerEl}
       </>
     );
   }
@@ -127,6 +167,7 @@ export default function HomePage() {
           </Card>
         </div>
         {toastEl}
+        {drawerEl}
       </>
     );
   }
@@ -233,6 +274,7 @@ export default function HomePage() {
                     appointment={appt}
                     nextUpId={nextUpId}
                     now={now}
+                    onSelect={handleSelectAppointment}
                   />
                   <div className="border-t border-subtle" />
                 </Fragment>
@@ -262,7 +304,11 @@ export default function HomePage() {
             ) : (
               latest.map((appt) => (
                 <Fragment key={appt.id}>
-                  <RecentBookingRow appointment={appt} now={now} />
+                  <RecentBookingRow
+                    appointment={appt}
+                    now={now}
+                    onSelect={handleSelectAppointment}
+                  />
                   <div className="border-t border-subtle" />
                 </Fragment>
               ))
@@ -275,6 +321,7 @@ export default function HomePage() {
       {footer}
       </div>
       {toastEl}
+      {drawerEl}
     </>
   );
 }
