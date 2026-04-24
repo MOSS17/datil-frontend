@@ -25,6 +25,7 @@ interface ProviderMeta {
   Icon: typeof CalendarIcon;
   iconClass: string;
   tileClass: string;
+  comingSoon?: boolean;
 }
 
 const PROVIDERS: ProviderMeta[] = [
@@ -34,6 +35,7 @@ const PROVIDERS: ProviderMeta[] = [
     Icon: CalendarIcon,
     iconClass: 'text-icon-accent',
     tileClass: 'bg-surface-accent-subtle',
+    comingSoon: true,
   },
   {
     provider: CALENDAR_PROVIDER.APPLE,
@@ -106,11 +108,14 @@ function ProviderRow({
   onDisconnect,
   isPending,
 }: ProviderRowProps) {
-  const { label, Icon, iconClass, tileClass, provider } = meta;
+  const { label, Icon, iconClass, tileClass, provider, comingSoon } = meta;
   const isConnected = connection !== null;
+  const hideConnect = Boolean(comingSoon) && !isConnected;
   const subtitle = isConnected
     ? (connection?.account_email ?? 'Conectado')
-    : 'No Conectado';
+    : comingSoon
+      ? 'Próximamente'
+      : 'No Conectado';
 
   return (
     <div className="flex items-center justify-between gap-400">
@@ -138,21 +143,23 @@ function ProviderRow({
           </span>
         </div>
       </div>
-      <Button
-        variant="secondary"
-        size="md"
-        leftIcon={
-          isConnected ? (
-            <Unlink aria-hidden size={16} strokeWidth={1.75} />
-          ) : (
-            <LinkIcon aria-hidden size={16} strokeWidth={1.75} />
-          )
-        }
-        isLoading={isPending}
-        onClick={() => (isConnected ? onDisconnect(provider) : onConnect(provider))}
-      >
-        {isConnected ? 'Desconectar' : 'Conectar'}
-      </Button>
+      {!hideConnect && (
+        <Button
+          variant="secondary"
+          size="md"
+          leftIcon={
+            isConnected ? (
+              <Unlink aria-hidden size={16} strokeWidth={1.75} />
+            ) : (
+              <LinkIcon aria-hidden size={16} strokeWidth={1.75} />
+            )
+          }
+          isLoading={isPending}
+          onClick={() => (isConnected ? onDisconnect(provider) : onConnect(provider))}
+        >
+          {isConnected ? 'Desconectar' : 'Conectar'}
+        </Button>
+      )}
     </div>
   );
 }
