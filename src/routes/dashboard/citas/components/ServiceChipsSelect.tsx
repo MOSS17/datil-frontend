@@ -54,12 +54,52 @@ export function ServiceChipsSelect({
     };
   }, [open]);
 
+  const hasMainSelected = useMemo(
+    () => selected.some((s) => !s.isExtra),
+    [selected],
+  );
+
   const toggle = (optId: string) => {
-    if (value.includes(optId)) onChange(value.filter((v) => v !== optId));
-    else onChange([...value, optId]);
+    const opt = options.find((o) => o.id === optId);
+    if (!opt) return;
+    const isSelected = value.includes(optId);
+
+    if (isSelected) {
+      const next = value.filter((v) => v !== optId);
+      // If removing the last main service, also drop all complementos.
+      if (!opt.isExtra) {
+        const stillHasMain = next.some(
+          (id) => !options.find((o) => o.id === id)?.isExtra,
+        );
+        if (!stillHasMain) {
+          onChange(next.filter((id) => !options.find((o) => o.id === id)?.isExtra));
+          return;
+        }
+      }
+      onChange(next);
+      return;
+    }
+
+    // Adding: block complementos when no main service is selected.
+    if (opt.isExtra && !hasMainSelected) return;
+    onChange([...value, optId]);
   };
 
-  const remove = (optId: string) => onChange(value.filter((v) => v !== optId));
+  const remove = (optId: string) => {
+    const opt = options.find((o) => o.id === optId);
+    const next = value.filter((v) => v !== optId);
+    // If removing the last main service, also drop all complementos.
+    if (opt && !opt.isExtra) {
+      const stillHasMain = next.some(
+        (id) => !options.find((o) => o.id === id)?.isExtra,
+      );
+      if (!stillHasMain) {
+        onChange(next.filter((id) => !options.find((o) => o.id === id)?.isExtra));
+        return;
+      }
+    }
+    onChange(next);
+  };
 
   return (
     <div className="flex w-full flex-col gap-200">
@@ -129,16 +169,22 @@ export function ServiceChipsSelect({
             )}
             {options.map((o) => {
               const isSelected = value.includes(o.id);
+              const isBlocked = !!o.isExtra && !hasMainSelected;
               return (
                 <li key={o.id}>
                   <button
                     type="button"
                     onClick={() => toggle(o.id)}
+                    disabled={isBlocked}
+                    aria-disabled={isBlocked}
+                    title={isBlocked ? 'Selecciona un servicio primero' : undefined}
                     className={cn(
                       'flex w-full items-center gap-200 px-400 py-200 text-left font-sans text-body-sm',
-                      isSelected
-                        ? 'bg-surface-secondary-subtle text-body-emphasis'
-                        : 'text-body hover:bg-surface-secondary-subtle',
+                      isBlocked
+                        ? 'cursor-not-allowed text-disabled'
+                        : isSelected
+                          ? 'bg-surface-secondary-subtle text-body-emphasis'
+                          : 'text-body hover:bg-surface-secondary-subtle',
                     )}
                   >
                     <span className="flex-1 truncate">{o.name}</span>
