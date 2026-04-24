@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import type { Appointment } from '@/api/types/appointments';
-import type { PersonalTime } from '@/api/types/schedule';
+import type { PersonalTime, Workday } from '@/api/types/schedule';
 import {
   addDays,
   DAY_SHORT_ES,
@@ -22,6 +22,7 @@ interface WeekGridProps {
   weekStart: Date;
   appointments: Appointment[];
   personalTimes: PersonalTime[];
+  workdays?: Workday[];
   today?: Date;
   startHour?: number;
   endHour?: number;
@@ -31,6 +32,7 @@ interface WeekGridProps {
 
 const ROW_HEIGHT_PX = 88;
 const SNAP_MINUTES = 15;
+const VIEWPORT_HEIGHT_PX = 640;
 
 function minutesToHHMM(startHour: number, minutesSinceStart: number): string {
   const total = startHour * 60 + Math.max(0, minutesSinceStart);
@@ -50,9 +52,10 @@ export function WeekGrid({
   weekStart,
   appointments,
   personalTimes,
+  workdays,
   today,
-  startHour = 8,
-  endHour = 15,
+  startHour = 0,
+  endHour = 23,
   onSelectRange,
   onSelectAppointment,
 }: WeekGridProps) {
@@ -66,6 +69,7 @@ export function WeekGrid({
   );
 
   const dayColRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const dragRef = useRef<DragState | null>(null);
   dragRef.current = drag;
@@ -80,11 +84,46 @@ export function WeekGrid({
     return Math.max(0, Math.min(totalMinutes, snapped));
   };
 
-  // Blocked minute ranges (appointments + personal time) indexed by day.
-  // Used while dragging a new-range selection so the end of the drag can't
-  // spill into an already-occupied slot. `minutesSinceStart` omitted from
-  // deps intentionally: it closes over a stable `startHour`.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Off-hour ranges per day (minutes since startHour) derived from the
+  // business's workdays. A disabled day covers the whole column; an enabled
+  // day is the complement of its work hour ranges.
+  const offHoursByDay = useMemo(() => {
+    const map: Array<Array<[number, number]>> = Array.from(
+      { length: 7 },
+      () => [[0, totalMinutes]],
+    );
+    if (!workdays) return map;
+    const byDow = new Map<number, Workday>();
+    for (const w of workdays) byDow.set(w.day, w);
+    for (let i = 0; i < 7; i++) {
+      const dow = days[i].getDay();
+      const w = byDow.get(dow);
+      if (!w || !w.is_enabled || w.hours.length === 0) continue;
+      const on: Array<[number, number]> = [];
+      for (const h of w.hours) {
+        const [sh, sm] = h.start_time.split(':').map(Number);
+        const [eh, em] = h.end_time.split(':').map(Number);
+        const s = Math.max(0, (sh - startHour) * 60 + sm);
+        const e = Math.min(totalMinutes, (eh - startHour) * 60 + em);
+        if (e > s) on.push([s, e]);
+      }
+      on.sort((a, b) => a[0] - b[0]);
+      const off: Array<[number, number]> = [];
+      let cursor = 0;
+      for (const [s, e] of on) {
+        if (s > cursor) off.push([cursor, s]);
+        cursor = Math.max(cursor, e);
+      }
+      if (cursor < totalMinutes) off.push([cursor, totalMinutes]);
+      map[i] = off;
+    }
+    return map;
+  }, [workdays, days, startHour, totalMinutes]);
+
+  // Blocked minute ranges (appointments + personal time + off-hours) indexed
+  // by day. Used while dragging a new-range selection so the end of the drag
+  // can't spill into an already-occupied slot. `minutesSinceStart` omitted
+  // from deps intentionally: it closes over a stable `startHour`.
   const blockedByDay = useMemo(() => {
     const map: Array<Array<[number, number]>> = Array.from(
       { length: 7 },
@@ -119,8 +158,11 @@ export function WeekGrid({
         map[dayIdx].push([0, totalMinutes]);
       }
     }
+    for (let i = 0; i < 7; i++) {
+      for (const range of offHoursByDay[i]) map[i].push(range);
+    }
     return map;
-  }, [appointments, personalTimes, days, startHour, totalMinutes]);
+  }, [appointments, personalTimes, offHoursByDay, days, startHour, totalMinutes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Clamp a drag end so the selected range [min(start,end), max(start,end)]
   // never overlaps a blocked interval. Start is assumed to land in free
@@ -202,6 +244,10 @@ export function WeekGrid({
     const rect = cell.getBoundingClientRect();
     const y = e.clientY - rect.top;
     const startMinutes = yToSnappedMinutes(y);
+    const inOffHour = (offHoursByDay[dayIndex] ?? []).some(
+      ([s, e]) => startMinutes >= s && startMinutes < e,
+    );
+    if (inOffHour) return;
     setDrag({
       dayIndex,
       startMinutes,
@@ -271,6 +317,41 @@ export function WeekGrid({
     return out;
   }, [personalTimes, days, hours.length, pxPerMinute, startHour]);
 
+  // Scroll the interior so the first business hour of the week (or the
+  // current time if we're viewing the week that contains today) is visible
+  // near the top. Runs once after we know the scroll container's size.
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    let targetMinutes: number | null = null;
+    if (today) {
+      const todayIdx = days.findIndex((d) => isSameDay(d, today));
+      if (todayIdx !== -1) {
+        const nowMin = today.getHours() * 60 + today.getMinutes();
+        targetMinutes = Math.max(0, nowMin - 60);
+      }
+    }
+    if (targetMinutes === null) {
+      let earliest = totalMinutes;
+      for (let i = 0; i < 7; i++) {
+        const off = offHoursByDay[i];
+        if (off.length === 0) {
+          earliest = 0;
+          break;
+        }
+        const firstOff = off[0];
+        if (firstOff[0] > 0) {
+          earliest = Math.min(earliest, 0);
+          break;
+        }
+        if (firstOff[1] < earliest) earliest = firstOff[1];
+      }
+      targetMinutes = earliest < totalMinutes ? Math.max(0, earliest - 60) : 0;
+    }
+    el.scrollTo({ top: targetMinutes * pxPerMinute, behavior: 'auto' });
+    // Re-run when the week (and therefore off-hour layout) changes.
+  }, [weekStart, offHoursByDay, pxPerMinute, totalMinutes, days, today]);
+
   return (
     <div className="overflow-hidden rounded-lg border border-default bg-surface">
       <div
@@ -307,112 +388,128 @@ export function WeekGrid({
       </div>
 
       <div
-        className="relative grid"
-        style={{ gridTemplateColumns: '72px repeat(7, minmax(0, 1fr))' }}
+        ref={scrollRef}
+        className="overflow-y-auto"
+        style={{ maxHeight: VIEWPORT_HEIGHT_PX }}
       >
-        <div className="flex flex-col">
-          {hours.map((h) => (
-            <div
-              key={h}
-              className="flex items-start justify-end px-300 pt-200"
-              style={{ height: ROW_HEIGHT_PX }}
-            >
-              <span className="font-sans text-caption text-muted">{formatHourLabel(h)}</span>
-            </div>
-          ))}
-        </div>
+        <div
+          className="relative grid"
+          style={{ gridTemplateColumns: '72px repeat(7, minmax(0, 1fr))' }}
+        >
+          <div className="flex flex-col">
+            {hours.map((h) => (
+              <div
+                key={h}
+                className="flex items-start justify-end px-300 pt-200"
+                style={{ height: ROW_HEIGHT_PX }}
+              >
+                <span className="font-sans text-caption text-muted">{formatHourLabel(h)}</span>
+              </div>
+            ))}
+          </div>
 
-        {days.map((d, dayIdx) => {
-          const isToday = today ? isSameDay(d, today) : false;
-          const dragOnThisDay = drag && drag.dayIndex === dayIdx;
-          const dragTop = dragOnThisDay
-            ? Math.min(drag.startMinutes, drag.endMinutes) * pxPerMinute
-            : 0;
-          const dragHeight = dragOnThisDay
-            ? Math.max(
-                SNAP_MINUTES * pxPerMinute,
-                Math.abs(drag.endMinutes - drag.startMinutes) * pxPerMinute,
-              )
-            : 0;
-          const dragStartLabel = dragOnThisDay
-            ? formatTimeShort(makeDateAtMinutes(startHour, Math.min(drag.startMinutes, drag.endMinutes)))
-            : '';
-          const dragEndLabel = dragOnThisDay
-            ? formatTimeShort(
-                makeDateAtMinutes(
-                  startHour,
-                  Math.max(drag.startMinutes, drag.endMinutes) ||
-                    Math.min(drag.startMinutes, drag.endMinutes) + SNAP_MINUTES,
-                ),
-              )
-            : '';
+          {days.map((d, dayIdx) => {
+            const isToday = today ? isSameDay(d, today) : false;
+            const dragOnThisDay = drag && drag.dayIndex === dayIdx;
+            const dragTop = dragOnThisDay
+              ? Math.min(drag.startMinutes, drag.endMinutes) * pxPerMinute
+              : 0;
+            const dragHeight = dragOnThisDay
+              ? Math.max(
+                  SNAP_MINUTES * pxPerMinute,
+                  Math.abs(drag.endMinutes - drag.startMinutes) * pxPerMinute,
+                )
+              : 0;
+            const dragStartLabel = dragOnThisDay
+              ? formatTimeShort(makeDateAtMinutes(startHour, Math.min(drag.startMinutes, drag.endMinutes)))
+              : '';
+            const dragEndLabel = dragOnThisDay
+              ? formatTimeShort(
+                  makeDateAtMinutes(
+                    startHour,
+                    Math.max(drag.startMinutes, drag.endMinutes) ||
+                      Math.min(drag.startMinutes, drag.endMinutes) + SNAP_MINUTES,
+                  ),
+                )
+              : '';
 
-          return (
-            <div
-              key={dayIdx}
-              ref={(el) => {
-                dayColRefs.current[dayIdx] = el;
-              }}
-              onPointerDown={(e) => handlePointerDown(e, dayIdx)}
-              className={cn(
-                'relative cursor-crosshair border-l border-subtle select-none touch-none',
-                isToday && 'bg-surface-secondary-subtle',
-              )}
-            >
-              {hours.map((_, hIdx) => (
-                <div
-                  key={hIdx}
-                  className="border-b border-subtle transition-colors hover:bg-surface-accent-subtle"
-                  style={{ height: ROW_HEIGHT_PX }}
-                />
-              ))}
-
-              {dragOnThisDay && drag.moved && (
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-x-0 flex items-start rounded-sm border border-accent bg-surface-accent-subtle/80 px-300 py-100"
-                  style={{ top: dragTop, height: dragHeight }}
-                >
-                  <span className="font-sans text-caption font-medium text-accent">
-                    {dragStartLabel} – {dragEndLabel}
-                  </span>
-                </div>
-              )}
-
-              {positionedPersonalTimes
-                .filter((p) => p.dayIndex === dayIdx)
-                .map((p) => (
+            return (
+              <div
+                key={dayIdx}
+                ref={(el) => {
+                  dayColRefs.current[dayIdx] = el;
+                }}
+                onPointerDown={(e) => handlePointerDown(e, dayIdx)}
+                className={cn(
+                  'relative cursor-crosshair border-l border-subtle select-none touch-none',
+                  isToday && 'bg-surface-secondary-subtle',
+                )}
+              >
+                {hours.map((_, hIdx) => (
                   <div
-                    key={p.personalTime.id}
-                    className="absolute inset-x-0 cursor-default"
-                    style={{ top: p.topPx, height: p.heightPx }}
-                    onPointerDown={(e) => e.stopPropagation()}
-                  >
-                    <PersonalTimeCard personalTime={p.personalTime} className="h-full" />
-                  </div>
+                    key={hIdx}
+                    className="border-b border-subtle transition-colors hover:bg-surface-accent-subtle"
+                    style={{ height: ROW_HEIGHT_PX }}
+                  />
                 ))}
 
-              {positionedAppointments
-                .filter((a) => a.dayIndex === dayIdx)
-                .map((a) => (
-                  <button
-                    type="button"
-                    key={a.appointment.id}
-                    className={cn(
-                      'absolute inset-x-0 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-accent',
-                      onSelectAppointment ? 'cursor-pointer' : 'cursor-default',
-                    )}
-                    style={{ top: a.topPx, height: a.heightPx }}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={() => onSelectAppointment?.(a.appointment)}
-                    aria-label={`Ver detalles de cita de ${a.appointment.customer_name}`}
-                  >
-                    <AppointmentCard appointment={a.appointment} className="h-full" />
-                  </button>
+                {(offHoursByDay[dayIdx] ?? []).map(([s, e], i) => (
+                  <div
+                    key={`off-${i}`}
+                    aria-hidden
+                    onPointerDown={(ev) => ev.stopPropagation()}
+                    className="absolute inset-x-0 cursor-not-allowed bg-surface-disabled/70"
+                    style={{ top: s * pxPerMinute, height: (e - s) * pxPerMinute }}
+                  />
                 ))}
-            </div>
-          );
-        })}
+
+                {dragOnThisDay && drag.moved && (
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-0 flex items-start rounded-sm border border-accent bg-surface-accent-subtle/80 px-300 py-100"
+                    style={{ top: dragTop, height: dragHeight }}
+                  >
+                    <span className="font-sans text-caption font-medium text-accent">
+                      {dragStartLabel} – {dragEndLabel}
+                    </span>
+                  </div>
+                )}
+
+                {positionedPersonalTimes
+                  .filter((p) => p.dayIndex === dayIdx)
+                  .map((p) => (
+                    <div
+                      key={p.personalTime.id}
+                      className="absolute inset-x-0 cursor-default"
+                      style={{ top: p.topPx, height: p.heightPx }}
+                      onPointerDown={(e) => e.stopPropagation()}
+                    >
+                      <PersonalTimeCard personalTime={p.personalTime} className="h-full" />
+                    </div>
+                  ))}
+
+                {positionedAppointments
+                  .filter((a) => a.dayIndex === dayIdx)
+                  .map((a) => (
+                    <button
+                      type="button"
+                      key={a.appointment.id}
+                      className={cn(
+                        'absolute inset-x-0 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                        onSelectAppointment ? 'cursor-pointer' : 'cursor-default',
+                      )}
+                      style={{ top: a.topPx, height: a.heightPx }}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => onSelectAppointment?.(a.appointment)}
+                      aria-label={`Ver detalles de cita de ${a.appointment.customer_name}`}
+                    >
+                      <AppointmentCard appointment={a.appointment} className="h-full" />
+                    </button>
+                  ))}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

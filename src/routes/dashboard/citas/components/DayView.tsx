@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import type { Appointment } from '@/api/types/appointments';
-import type { PersonalTime } from '@/api/types/schedule';
+import type { PersonalTime, Workday } from '@/api/types/schedule';
 import {
   addDays,
   DAY_SHORT_ES,
@@ -19,6 +19,7 @@ interface DayViewProps {
   onSelectDay: (day: Date) => void;
   appointments: Appointment[];
   personalTimes: PersonalTime[];
+  workdays?: Workday[];
   today?: Date;
   startHour?: number;
   endHour?: number;
@@ -28,6 +29,7 @@ interface DayViewProps {
 
 const ROW_HEIGHT_PX = 96;
 const SNAP_MINUTES = 15;
+const VIEWPORT_HEIGHT_PX = 600;
 
 function minutesToHHMM(startHour: number, minutesSinceStart: number): string {
   const total = startHour * 60 + Math.max(0, minutesSinceStart);
@@ -55,9 +57,10 @@ export function DayView({
   onSelectDay,
   appointments,
   personalTimes,
+  workdays,
   today,
-  startHour = 8,
-  endHour = 15,
+  startHour = 0,
+  endHour = 23,
   onSelectRange,
   onSelectAppointment,
 }: DayViewProps) {
@@ -75,6 +78,7 @@ export function DayView({
   const minutesSinceStart = (d: Date) => (d.getHours() - startHour) * 60 + d.getMinutes();
 
   const colRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const dragRef = useRef<DragState | null>(null);
   dragRef.current = drag;
@@ -85,9 +89,38 @@ export function DayView({
     return Math.max(0, Math.min(totalMinutes, snapped));
   };
 
+  // Off-hour ranges on the selected day derived from the business's
+  // workdays. If the day is disabled or has no hour ranges, the entire
+  // column is off-hours.
+  const offHours = useMemo(() => {
+    if (!workdays) return [[0, totalMinutes]] as Array<[number, number]>;
+    const dow = selectedDay.getDay();
+    const w = workdays.find((x) => x.day === dow);
+    if (!w || !w.is_enabled || w.hours.length === 0) {
+      return [[0, totalMinutes]] as Array<[number, number]>;
+    }
+    const on: Array<[number, number]> = [];
+    for (const h of w.hours) {
+      const [sh, sm] = h.start_time.split(':').map(Number);
+      const [eh, em] = h.end_time.split(':').map(Number);
+      const s = Math.max(0, (sh - startHour) * 60 + sm);
+      const e = Math.min(totalMinutes, (eh - startHour) * 60 + em);
+      if (e > s) on.push([s, e]);
+    }
+    on.sort((a, b) => a[0] - b[0]);
+    const off: Array<[number, number]> = [];
+    let cursor = 0;
+    for (const [s, e] of on) {
+      if (s > cursor) off.push([cursor, s]);
+      cursor = Math.max(cursor, e);
+    }
+    if (cursor < totalMinutes) off.push([cursor, totalMinutes]);
+    return off;
+  }, [workdays, selectedDay, startHour, totalMinutes]);
+
   // Blocked minute ranges on the selected day (appointments + personal
-  // time). Used to clamp a new-range drag so it can't spill into an
-  // occupied slot.
+  // time + off-hours). Used to clamp a new-range drag so it can't spill
+  // into an occupied slot.
   const blocked = useMemo(() => {
     const out: Array<[number, number]> = [];
     for (const a of appointments) {
@@ -118,8 +151,9 @@ export function DayView({
         out.push([0, totalMinutes]);
       }
     }
+    for (const r of offHours) out.push(r);
     return out;
-  }, [appointments, personalTimes, selectedDay, startHour, totalMinutes]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [appointments, personalTimes, offHours, selectedDay, startHour, totalMinutes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const clampDragEnd = (start: number, candidate: number): number => {
     if (candidate >= start) {
@@ -190,6 +224,8 @@ export function DayView({
     if (!rect) return;
     const y = e.clientY - rect.top;
     const startMinutes = yToSnappedMinutes(y);
+    const inOffHour = offHours.some(([s, e2]) => startMinutes >= s && startMinutes < e2);
+    if (inOffHour) return;
     setDrag({ startMinutes, endMinutes: startMinutes, moved: false });
   };
 
@@ -215,6 +251,23 @@ export function DayView({
         Math.abs(drag.endMinutes - drag.startMinutes) * pxPerMinute,
       )
     : 0;
+
+  // Scroll the interior so business hours (or current time on today) are
+  // in view on mount and whenever the selected day changes.
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    let targetMinutes: number;
+    if (today && isSameDay(selectedDay, today)) {
+      const nowMin = today.getHours() * 60 + today.getMinutes();
+      targetMinutes = Math.max(0, nowMin - 60);
+    } else if (offHours.length === 0 || offHours[0][0] > 0) {
+      targetMinutes = 0;
+    } else {
+      targetMinutes = Math.max(0, offHours[0][1] - 60);
+    }
+    el.scrollTo({ top: targetMinutes * pxPerMinute, behavior: 'auto' });
+  }, [selectedDay, offHours, pxPerMinute, today]);
 
   return (
     <div className="flex flex-col gap-400">
@@ -254,113 +307,129 @@ export function DayView({
       </div>
 
       <div
-        className="relative grid rounded-lg"
-        style={{ gridTemplateColumns: '72px minmax(0, 1fr)' }}
+        ref={scrollRef}
+        className="overflow-y-auto rounded-lg"
+        style={{ maxHeight: VIEWPORT_HEIGHT_PX }}
       >
-        <div className="flex flex-col">
-          {hours.map((h) => (
-            <div
-              key={h}
-              className="flex items-start justify-start pt-100 pr-200"
-              style={{ height: ROW_HEIGHT_PX }}
-            >
-              <span className="font-sans text-caption text-muted">{formatHourLabel(h)}</span>
-            </div>
-          ))}
-        </div>
-
         <div
-          ref={colRef}
-          onPointerDown={handlePointerDown}
-          className="relative cursor-crosshair border-l border-subtle select-none touch-none"
+          className="relative grid"
+          style={{ gridTemplateColumns: '72px minmax(0, 1fr)' }}
         >
-          {hours.map((_, i) => (
-            <div
-              key={i}
-              className="border-b border-subtle transition-colors hover:bg-surface-accent-subtle"
-              style={{ height: ROW_HEIGHT_PX }}
-            />
-          ))}
+          <div className="flex flex-col">
+            {hours.map((h) => (
+              <div
+                key={h}
+                className="flex items-start justify-start pt-100 pr-200"
+                style={{ height: ROW_HEIGHT_PX }}
+              >
+                <span className="font-sans text-caption text-muted">{formatHourLabel(h)}</span>
+              </div>
+            ))}
+          </div>
 
-          {drag && drag.moved && (
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 flex items-start rounded-sm border border-accent bg-surface-accent-subtle/80 px-300 py-100"
-              style={{ top: dragTop, height: dragHeight }}
-            >
-              <span className="font-sans text-caption font-medium text-accent">
-                {formatTimeShort(
-                  makeDateAtMinutes(startHour, Math.min(drag.startMinutes, drag.endMinutes)),
-                )}{' '}
-                –{' '}
-                {formatTimeShort(
-                  makeDateAtMinutes(
-                    startHour,
-                    Math.max(drag.startMinutes, drag.endMinutes) ||
-                      Math.min(drag.startMinutes, drag.endMinutes) + SNAP_MINUTES,
-                  ),
-                )}
-              </span>
-            </div>
-          )}
+          <div
+            ref={colRef}
+            onPointerDown={handlePointerDown}
+            className="relative cursor-crosshair border-l border-subtle select-none touch-none"
+          >
+            {hours.map((_, i) => (
+              <div
+                key={i}
+                className="border-b border-subtle transition-colors hover:bg-surface-accent-subtle"
+                style={{ height: ROW_HEIGHT_PX }}
+              />
+            ))}
 
-          {dayPersonalTimes.map((p) => {
-            if (!p.start_time || !p.end_time) {
+            {offHours.map(([s, e2], i) => (
+              <div
+                key={`off-${i}`}
+                aria-hidden
+                onPointerDown={(ev) => ev.stopPropagation()}
+                className="absolute inset-x-0 cursor-not-allowed bg-surface-disabled/70"
+                style={{ top: s * pxPerMinute, height: (e2 - s) * pxPerMinute }}
+              />
+            ))}
+
+            {drag && drag.moved && (
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 flex items-start rounded-sm border border-accent bg-surface-accent-subtle/80 px-300 py-100"
+                style={{ top: dragTop, height: dragHeight }}
+              >
+                <span className="font-sans text-caption font-medium text-accent">
+                  {formatTimeShort(
+                    makeDateAtMinutes(startHour, Math.min(drag.startMinutes, drag.endMinutes)),
+                  )}{' '}
+                  –{' '}
+                  {formatTimeShort(
+                    makeDateAtMinutes(
+                      startHour,
+                      Math.max(drag.startMinutes, drag.endMinutes) ||
+                        Math.min(drag.startMinutes, drag.endMinutes) + SNAP_MINUTES,
+                    ),
+                  )}
+                </span>
+              </div>
+            )}
+
+            {dayPersonalTimes.map((p) => {
+              if (!p.start_time || !p.end_time) {
+                return (
+                  <div
+                    key={p.id}
+                    className="absolute inset-x-0 cursor-default"
+                    style={{ top: 0, height: hours.length * ROW_HEIGHT_PX }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                  >
+                    <PersonalTimeCard personalTime={p} className="h-full" />
+                  </div>
+                );
+              }
+              const [sh, sm] = p.start_time.split(':').map(Number);
+              const [eh, em] = p.end_time.split(':').map(Number);
+              const topPx = Math.max(0, (sh - startHour) * 60 + sm) * pxPerMinute;
+              const heightPx = Math.max(
+                40,
+                ((eh - startHour) * 60 + em - ((sh - startHour) * 60 + sm)) * pxPerMinute,
+              );
               return (
                 <div
                   key={p.id}
                   className="absolute inset-x-0 cursor-default"
-                  style={{ top: 0, height: hours.length * ROW_HEIGHT_PX }}
+                  style={{ top: topPx, height: heightPx }}
                   onPointerDown={(e) => e.stopPropagation()}
                 >
                   <PersonalTimeCard personalTime={p} className="h-full" />
                 </div>
               );
-            }
-            const [sh, sm] = p.start_time.split(':').map(Number);
-            const [eh, em] = p.end_time.split(':').map(Number);
-            const topPx = Math.max(0, (sh - startHour) * 60 + sm) * pxPerMinute;
-            const heightPx = Math.max(
-              40,
-              ((eh - startHour) * 60 + em - ((sh - startHour) * 60 + sm)) * pxPerMinute,
-            );
-            return (
-              <div
-                key={p.id}
-                className="absolute inset-x-0 cursor-default"
-                style={{ top: topPx, height: heightPx }}
-                onPointerDown={(e) => e.stopPropagation()}
-              >
-                <PersonalTimeCard personalTime={p} className="h-full" />
-              </div>
-            );
-          })}
+            })}
 
-          {dayAppointments.map((a) => {
-            const start = new Date(a.start_time);
-            const end = new Date(a.end_time);
-            const topPx = Math.max(0, minutesSinceStart(start) * pxPerMinute);
-            const heightPx = Math.max(
-              40,
-              (minutesSinceStart(end) - minutesSinceStart(start)) * pxPerMinute,
-            );
-            return (
-              <button
-                type="button"
-                key={a.id}
-                className={cn(
-                  'absolute inset-x-0 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-accent',
-                  onSelectAppointment ? 'cursor-pointer' : 'cursor-default',
-                )}
-                style={{ top: topPx, height: heightPx }}
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={() => onSelectAppointment?.(a)}
-                aria-label={`Ver detalles de cita de ${a.customer_name}`}
-              >
-                <AppointmentCard appointment={a} className="h-full" />
-              </button>
-            );
-          })}
+            {dayAppointments.map((a) => {
+              const start = new Date(a.start_time);
+              const end = new Date(a.end_time);
+              const topPx = Math.max(0, minutesSinceStart(start) * pxPerMinute);
+              const heightPx = Math.max(
+                40,
+                (minutesSinceStart(end) - minutesSinceStart(start)) * pxPerMinute,
+              );
+              return (
+                <button
+                  type="button"
+                  key={a.id}
+                  className={cn(
+                    'absolute inset-x-0 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                    onSelectAppointment ? 'cursor-pointer' : 'cursor-default',
+                  )}
+                  style={{ top: topPx, height: heightPx }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => onSelectAppointment?.(a)}
+                  aria-label={`Ver detalles de cita de ${a.customer_name}`}
+                >
+                  <AppointmentCard appointment={a} className="h-full" />
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

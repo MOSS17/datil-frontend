@@ -5,7 +5,11 @@ import { Button } from '@/components/ui/Button';
 import { Toast, type ToastVariant } from '@/components/ui/Toast';
 import { useAppointments, useCreateAppointment } from '@/api/hooks/useAppointments';
 import { enrichAppointments } from '@/lib/appointmentEnrich';
-import { useCreatePersonalTime, usePersonalTime } from '@/api/hooks/useSchedule';
+import {
+  useCreatePersonalTime,
+  usePersonalTime,
+  useWorkdays,
+} from '@/api/hooks/useSchedule';
 import { useMyBusiness } from '@/api/hooks/useBusiness';
 import { useServices } from '@/api/hooks/useServices';
 import { useCategories } from '@/api/hooks/useCategories';
@@ -58,6 +62,7 @@ export default function CalendarioPage() {
 
   const appointmentsQuery = useAppointments();
   const personalTimeQuery = usePersonalTime();
+  const workdaysQuery = useWorkdays();
   const servicesQuery = useServices();
   const categoriesQuery = useCategories();
   const businessQuery = useMyBusiness();
@@ -65,9 +70,15 @@ export default function CalendarioPage() {
   const createPersonalTime = useCreatePersonalTime();
 
   const isLoading =
-    appointmentsQuery.isLoading || personalTimeQuery.isLoading || servicesQuery.isLoading;
+    appointmentsQuery.isLoading ||
+    personalTimeQuery.isLoading ||
+    workdaysQuery.isLoading ||
+    servicesQuery.isLoading;
   const hasError =
-    appointmentsQuery.error || personalTimeQuery.error || servicesQuery.error;
+    appointmentsQuery.error ||
+    personalTimeQuery.error ||
+    workdaysQuery.error ||
+    servicesQuery.error;
 
   const weekEnd = useMemo(() => addDays(weekStart, 7), [weekStart]);
 
@@ -200,6 +211,7 @@ export default function CalendarioPage() {
           onClick={() => {
             appointmentsQuery.refetch();
             personalTimeQuery.refetch();
+            workdaysQuery.refetch();
             servicesQuery.refetch();
           }}
         >
@@ -239,6 +251,7 @@ export default function CalendarioPage() {
             weekStart={weekStart}
             appointments={weekAppointments}
             personalTimes={weekPersonalTimes}
+            workdays={workdaysQuery.data}
             today={today}
             onSelectRange={handleSelectRange}
             onSelectAppointment={handleSelectAppointment}
@@ -255,6 +268,7 @@ export default function CalendarioPage() {
             }}
             appointments={weekAppointments}
             personalTimes={weekPersonalTimes}
+            workdays={workdaysQuery.data}
             today={today}
             onSelectRange={handleSelectRange}
             onSelectAppointment={handleSelectAppointment}
