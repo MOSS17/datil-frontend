@@ -29,11 +29,28 @@ export function useWorkdays() {
   });
 }
 
+// Backend decodes into []model.Workday with DisallowUnknownFields and
+// uuid.UUID columns — sending empty-string ids on freshly-added hours
+// triggers a 400 before validation even runs. UpsertWorkdays only reads
+// day/is_enabled/start_time/end_time, so strip everything else.
+function toUpdateWorkdaysBody(data: Workday[]) {
+  return data.map((w) => ({
+    day: w.day,
+    is_enabled: w.is_enabled,
+    hours: w.is_enabled
+      ? w.hours.map((h) => ({ start_time: h.start_time, end_time: h.end_time }))
+      : [],
+  }));
+}
+
 export function useUpdateWorkdays() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: Workday[]) =>
-      apiClient<Workday[]>(ENDPOINTS.SCHEDULE.WORKDAYS, { method: 'PUT', body: data }),
+      apiClient<Workday[]>(ENDPOINTS.SCHEDULE.WORKDAYS, {
+        method: 'PUT',
+        body: toUpdateWorkdaysBody(data),
+      }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: scheduleKeys.workdays }),
   });
 }

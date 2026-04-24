@@ -19,7 +19,7 @@ export default function SchedulePage() {
 
   if (error) {
     return (
-      <main className="flex flex-1 flex-col items-center justify-center px-1000 py-800">
+      <main className="flex flex-1 flex-col items-center justify-center px-400 py-800 md:px-1000">
         <ErrorState
           message="No se pudo cargar tu disponibilidad."
           onRetry={() => refetch()}
@@ -32,25 +32,27 @@ export default function SchedulePage() {
     .map((d) => draft.find((item) => item.day === d))
     .filter(Boolean) as DraftWorkday[];
 
+  const saveButton = (
+    <Button
+      variant="primary"
+      isLoading={updateWorkdays.isPending}
+      leftIcon={<Save aria-hidden size={16} strokeWidth={1.75} />}
+      onClick={() => updateWorkdays.mutateAsync(toWorkdays(draft))}
+    >
+      Guardar Cambios
+    </Button>
+  );
+
   return (
-    <main className="px-1000 py-800">
+    <main className="px-400 py-800 md:px-1000">
       <PageHeader
         title="Disponibilidad"
         subtitle="Define tu horario de trabajo, descansos y días libres."
         className="mb-700"
-        actions={
-          <Button
-            variant="primary"
-            isLoading={updateWorkdays.isPending}
-            leftIcon={<Save aria-hidden size={16} strokeWidth={1.75} />}
-            onClick={() => updateWorkdays.mutateAsync(toWorkdays(draft))}
-          >
-            Guardar Cambios
-          </Button>
-        }
+        actions={<div className="hidden md:block">{saveButton}</div>}
       />
 
-      <div className="rounded-lg border border-default bg-surface overflow-hidden py-400">
+      <div className="flex flex-col gap-600 md:gap-0 md:rounded-lg md:border md:border-default md:bg-surface md:overflow-hidden md:py-400">
         {orderedDays.map((day, idx) => (
           <div key={day.day}>
             <DayRow
@@ -65,6 +67,18 @@ export default function SchedulePage() {
             )}
           </div>
         ))}
+      </div>
+
+      <div className="mt-1200 md:hidden">
+        <Button
+          variant="primary"
+          fullWidth
+          isLoading={updateWorkdays.isPending}
+          leftIcon={<Save aria-hidden size={16} strokeWidth={1.75} />}
+          onClick={() => updateWorkdays.mutateAsync(toWorkdays(draft))}
+        >
+          Guardar Cambios
+        </Button>
       </div>
     </main>
   );

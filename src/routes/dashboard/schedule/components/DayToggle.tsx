@@ -8,7 +8,7 @@ interface DayToggleProps {
 
 export function DayToggle({ enabled, label, onToggle }: DayToggleProps) {
   return (
-    <div className="flex items-center gap-400 shrink-0 w-[133px]">
+    <div className="flex items-center gap-400 shrink-0 w-full md:w-[133px]">
       <button
         type="button"
         role="switch"
