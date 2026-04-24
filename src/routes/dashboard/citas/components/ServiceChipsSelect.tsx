@@ -1,6 +1,13 @@
-import { ChevronDown, X } from 'lucide-react';
+import { ChevronDown, Search, X } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
+
+function normalize(s: string) {
+  return s
+    .toLocaleLowerCase('es')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '');
+}
 
 export interface ServiceOption {
   id: string;
@@ -42,7 +49,9 @@ export function ServiceChipsSelect({
 }: ServiceChipsSelectProps) {
   const id = useId();
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const searchRef = useRef<HTMLInputElement | null>(null);
 
   const selected = useMemo(
     () => value.map((v) => options.find((o) => o.id === v)).filter(Boolean) as ServiceOption[],
@@ -50,7 +59,12 @@ export function ServiceChipsSelect({
   );
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setSearch('');
+      return;
+    }
+    // Focus search input when dropdown opens.
+    const timer = window.setTimeout(() => searchRef.current?.focus(), 0);
     const handlePointer = (e: MouseEvent | TouchEvent) => {
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
     };
@@ -61,6 +75,7 @@ export function ServiceChipsSelect({
     document.addEventListener('touchstart', handlePointer);
     document.addEventListener('keydown', handleKey);
     return () => {
+      window.clearTimeout(timer);
       document.removeEventListener('mousedown', handlePointer);
       document.removeEventListener('touchstart', handlePointer);
       document.removeEventListener('keydown', handleKey);
@@ -99,8 +114,18 @@ export function ServiceChipsSelect({
   };
 
   const grouped = useMemo(() => {
+    const q = normalize(search.trim());
+    const matchesService = (o: ServiceOption, categoryName?: string) => {
+      if (!q) return true;
+      if (normalize(o.name).includes(q)) return true;
+      if (categoryName && normalize(categoryName).includes(q)) return true;
+      return false;
+    };
+
     if (!categories || categories.length === 0) {
-      return [{ id: '__all__', name: '', options }];
+      return [
+        { id: '__all__', name: '', options: options.filter((o) => matchesService(o)) },
+      ].filter((g) => g.options.length > 0);
     }
     const buckets = new Map<string, ServiceOption[]>();
     for (const c of categories) buckets.set(c.id, []);
@@ -111,13 +136,24 @@ export function ServiceChipsSelect({
       else uncategorized.push(o);
     }
     const groups = categories
-      .map((c) => ({ id: c.id, name: c.name, options: buckets.get(c.id) ?? [] }))
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        options: (buckets.get(c.id) ?? []).filter((o) => matchesService(o, c.name)),
+      }))
       .filter((g) => g.options.length > 0);
-    if (uncategorized.length > 0) {
-      groups.push({ id: '__uncategorized__', name: 'Sin categoría', options: uncategorized });
+    const filteredUncategorized = uncategorized.filter((o) =>
+      matchesService(o, 'Sin categoría'),
+    );
+    if (filteredUncategorized.length > 0) {
+      groups.push({
+        id: '__uncategorized__',
+        name: 'Sin categoría',
+        options: filteredUncategorized,
+      });
     }
     return groups;
-  }, [options, categories]);
+  }, [options, categories, search]);
 
   const remove = (optId: string) => {
     const opt = options.find((o) => o.id === optId);
@@ -192,13 +228,46 @@ export function ServiceChipsSelect({
           />
         </button>
         {open && (
-          <ul
-            role="listbox"
-            className="absolute left-0 right-0 top-full z-10 mt-100 max-h-[240px] overflow-y-auto rounded-md border border-default bg-surface py-200 shadow-md"
-          >
+          <div className="absolute left-0 right-0 top-full z-10 mt-100 flex max-h-[320px] flex-col rounded-md border border-default bg-surface shadow-md">
+            <div className="flex items-center gap-200 border-b border-subtle px-300 py-200">
+              <Search
+                aria-hidden
+                size={16}
+                strokeWidth={1.75}
+                className="shrink-0 text-icon-secondary"
+              />
+              <input
+                ref={searchRef}
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar servicio..."
+                aria-label="Buscar servicio"
+                className="w-full bg-transparent font-sans text-body-sm text-body-emphasis placeholder:text-placeholder focus:outline-none"
+              />
+              {search && (
+                <button
+                  type="button"
+                  aria-label="Borrar búsqueda"
+                  onClick={() => {
+                    setSearch('');
+                    searchRef.current?.focus();
+                  }}
+                  className="inline-flex items-center justify-center text-icon-secondary hover:text-body-emphasis"
+                >
+                  <X size={14} strokeWidth={1.75} aria-hidden />
+                </button>
+              )}
+            </div>
+            <ul role="listbox" className="flex-1 overflow-y-auto py-200">
             {options.length === 0 && (
               <li className="px-400 py-200 font-sans text-body-sm text-muted">
                 No hay servicios disponibles
+              </li>
+            )}
+            {options.length > 0 && grouped.length === 0 && (
+              <li className="px-400 py-200 font-sans text-body-sm text-muted">
+                No se encontraron servicios
               </li>
             )}
             {grouped.map((group, groupIndex) => (
@@ -247,7 +316,8 @@ export function ServiceChipsSelect({
                 </ul>
               </li>
             ))}
-          </ul>
+            </ul>
+          </div>
         )}
       </div>
       {error && <p className="font-sans text-caption text-error">{error}</p>}
