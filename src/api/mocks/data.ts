@@ -25,6 +25,7 @@ export const mockBusiness: BusinessApi = {
   beneficiary_clabe: '012180001234567890',
   bank_name: 'BBVA',
   beneficiary_name: 'Guadalupe Urias Soto',
+  timezone: 'America/Mexico_City',
   created_at: '2025-08-01T15:00:00.000Z',
   updated_at: '2025-08-01T15:00:00.000Z',
 };
