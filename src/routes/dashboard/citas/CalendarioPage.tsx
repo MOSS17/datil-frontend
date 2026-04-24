@@ -6,6 +6,7 @@ import { enrichAppointments } from '@/lib/appointmentEnrich';
 import { useCreatePersonalTime, usePersonalTime } from '@/api/hooks/useSchedule';
 import { useMyBusiness } from '@/api/hooks/useBusiness';
 import { useServices } from '@/api/hooks/useServices';
+import { useCategories } from '@/api/hooks/useCategories';
 import { CalendarHeader } from './components/CalendarHeader';
 import { MobileCalendarTopBar } from './components/MobileCalendarTopBar';
 import { WeekGrid, type RangeSelection } from './components/WeekGrid';
@@ -32,6 +33,7 @@ export default function CalendarioPage() {
   const appointmentsQuery = useAppointments();
   const personalTimeQuery = usePersonalTime();
   const servicesQuery = useServices();
+  const categoriesQuery = useCategories();
   const businessQuery = useMyBusiness();
   const createAppointment = useCreateAppointment();
   const createPersonalTime = useCreatePersonalTime();
@@ -163,6 +165,7 @@ export default function CalendarioPage() {
   }
 
   const services = servicesQuery.data ?? [];
+  const categories = categoriesQuery.data ?? [];
   const defaultFormDate = formatIsoDate(selectedDay);
 
   return (
@@ -216,6 +219,7 @@ export default function CalendarioPage() {
         open={drawerOpen}
         onClose={closeDrawer}
         services={services}
+        categories={categories}
         defaultDate={prefill?.date ?? defaultFormDate}
         defaultStartTime={prefill?.start_time}
         defaultEndTime={prefill?.end_time}

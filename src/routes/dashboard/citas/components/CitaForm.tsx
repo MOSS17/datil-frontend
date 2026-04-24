@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import type { Service } from '@/api/types/services';
+import type { Category } from '@/api/types/categories';
 import { citaFormSchema, type CitaFormValues } from '../schema';
 import { TIME_OPTIONS } from '../utils';
 import { ServiceChipsSelect, type ServiceOption } from './ServiceChipsSelect';
@@ -12,6 +13,7 @@ import { InfoBanner } from './InfoBanner';
 
 interface CitaFormProps {
   services: Service[];
+  categories?: Category[];
   defaultDate?: string;
   defaultStartTime?: string;
   defaultEndTime?: string;
@@ -23,6 +25,7 @@ interface CitaFormProps {
 
 export function CitaForm({
   services,
+  categories,
   defaultDate = '',
   defaultStartTime = '',
   defaultEndTime = '',
@@ -53,7 +56,10 @@ export function CitaForm({
     id: s.id,
     name: s.name,
     isExtra: s.is_extra,
+    categoryId: s.category_id,
   }));
+
+  const categoryGroups = categories?.map((c) => ({ id: c.id, name: c.name }));
 
   return (
     <form
@@ -68,6 +74,7 @@ export function CitaForm({
           <ServiceChipsSelect
             label="Servicios Principales y Complementos"
             options={serviceOptions}
+            categories={categoryGroups}
             value={field.value}
             onChange={field.onChange}
             error={errors.service_ids?.message}

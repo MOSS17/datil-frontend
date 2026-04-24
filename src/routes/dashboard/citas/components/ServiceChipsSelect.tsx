@@ -6,6 +6,12 @@ export interface ServiceOption {
   id: string;
   name: string;
   isExtra?: boolean;
+  categoryId?: string;
+}
+
+export interface ServiceCategoryGroup {
+  id: string;
+  name: string;
 }
 
 interface ServiceChipsSelectProps {
@@ -16,6 +22,12 @@ interface ServiceChipsSelectProps {
   error?: string;
   placeholder?: string;
   disabled?: boolean;
+  /**
+   * Optional ordered list of categories. When provided, options are grouped
+   * by `categoryId` under each category's name. Options without a matching
+   * category fall under a "Sin categoría" group at the end.
+   */
+  categories?: ServiceCategoryGroup[];
 }
 
 export function ServiceChipsSelect({
@@ -26,6 +38,7 @@ export function ServiceChipsSelect({
   error,
   placeholder = 'Selecciona servicios',
   disabled,
+  categories,
 }: ServiceChipsSelectProps) {
   const id = useId();
   const [open, setOpen] = useState(false);
@@ -84,6 +97,27 @@ export function ServiceChipsSelect({
     if (opt.isExtra && !hasMainSelected) return;
     onChange([...value, optId]);
   };
+
+  const grouped = useMemo(() => {
+    if (!categories || categories.length === 0) {
+      return [{ id: '__all__', name: '', options }];
+    }
+    const buckets = new Map<string, ServiceOption[]>();
+    for (const c of categories) buckets.set(c.id, []);
+    const uncategorized: ServiceOption[] = [];
+    for (const o of options) {
+      const bucket = o.categoryId ? buckets.get(o.categoryId) : undefined;
+      if (bucket) bucket.push(o);
+      else uncategorized.push(o);
+    }
+    const groups = categories
+      .map((c) => ({ id: c.id, name: c.name, options: buckets.get(c.id) ?? [] }))
+      .filter((g) => g.options.length > 0);
+    if (uncategorized.length > 0) {
+      groups.push({ id: '__uncategorized__', name: 'Sin categoría', options: uncategorized });
+    }
+    return groups;
+  }, [options, categories]);
 
   const remove = (optId: string) => {
     const opt = options.find((o) => o.id === optId);
@@ -167,34 +201,52 @@ export function ServiceChipsSelect({
                 No hay servicios disponibles
               </li>
             )}
-            {options.map((o) => {
-              const isSelected = value.includes(o.id);
-              const isBlocked = !!o.isExtra && !hasMainSelected;
-              return (
-                <li key={o.id}>
-                  <button
-                    type="button"
-                    onClick={() => toggle(o.id)}
-                    disabled={isBlocked}
-                    aria-disabled={isBlocked}
-                    title={isBlocked ? 'Selecciona un servicio primero' : undefined}
+            {grouped.map((group, groupIndex) => (
+              <li key={group.id}>
+                {group.name && (
+                  <div
+                    role="presentation"
                     className={cn(
-                      'flex w-full items-center gap-200 px-400 py-200 text-left font-sans text-body-sm',
-                      isBlocked
-                        ? 'cursor-not-allowed text-disabled'
-                        : isSelected
-                          ? 'bg-surface-secondary-subtle text-body-emphasis'
-                          : 'text-body hover:bg-surface-secondary-subtle',
+                      'px-400 pb-100 pt-200 font-sans text-caption font-semibold uppercase tracking-wide text-muted',
+                      groupIndex > 0 && 'border-t border-subtle mt-200',
                     )}
                   >
-                    <span className="flex-1 truncate">{o.name}</span>
-                    {o.isExtra && (
-                      <span className="font-sans text-caption text-muted">Complemento</span>
-                    )}
-                  </button>
-                </li>
-              );
-            })}
+                    {group.name}
+                  </div>
+                )}
+                <ul role="group" aria-label={group.name || undefined}>
+                  {group.options.map((o) => {
+                    const isSelected = value.includes(o.id);
+                    const isBlocked = !!o.isExtra && !hasMainSelected;
+                    return (
+                      <li key={o.id}>
+                        <button
+                          type="button"
+                          onClick={() => toggle(o.id)}
+                          disabled={isBlocked}
+                          aria-disabled={isBlocked}
+                          title={isBlocked ? 'Selecciona un servicio primero' : undefined}
+                          className={cn(
+                            'flex w-full items-center gap-200 py-200 pr-400 text-left font-sans text-body-sm',
+                            group.name ? 'pl-600' : 'pl-400',
+                            isBlocked
+                              ? 'cursor-not-allowed text-disabled'
+                              : isSelected
+                                ? 'bg-surface-secondary-subtle text-body-emphasis'
+                                : 'text-body hover:bg-surface-secondary-subtle',
+                          )}
+                        >
+                          <span className="flex-1 truncate">{o.name}</span>
+                          {o.isExtra && (
+                            <span className="font-sans text-caption text-muted">Complemento</span>
+                          )}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </li>
+            ))}
           </ul>
         )}
       </div>

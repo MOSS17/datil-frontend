@@ -3,6 +3,7 @@ import { Calendar, Coffee } from 'lucide-react';
 import { Drawer } from '@/components/ui/Drawer';
 import { cn } from '@/lib/cn';
 import type { Service } from '@/api/types/services';
+import type { Category } from '@/api/types/categories';
 import type { CitaFormValues, TiempoPersonalFormValues } from '../schema';
 import { CitaForm } from './CitaForm';
 import { TiempoPersonalForm } from './TiempoPersonalForm';
@@ -13,6 +14,7 @@ interface NuevoBloqueDrawerProps {
   open: boolean;
   onClose: () => void;
   services: Service[];
+  categories?: Category[];
   defaultDate?: string;
   defaultStartTime?: string;
   defaultEndTime?: string;
@@ -30,6 +32,7 @@ export function NuevoBloqueDrawer({
   open,
   onClose,
   services,
+  categories,
   defaultDate,
   defaultStartTime,
   defaultEndTime,
@@ -60,6 +63,7 @@ export function NuevoBloqueDrawer({
           <CitaForm
             key={`cita-${formKey ?? ''}`}
             services={services}
+            categories={categories}
             defaultDate={defaultDate}
             defaultStartTime={defaultStartTime}
             defaultEndTime={defaultEndTime}
