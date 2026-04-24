@@ -359,12 +359,14 @@ export function WeekGrid({
           return (
             <div
               key={i}
-              className={cn(
-                'flex items-center justify-center gap-200 border-l border-subtle px-400 py-300',
-                isToday && 'bg-surface-secondary-subtle',
-              )}
+              className="flex items-center justify-center gap-200 border-l border-subtle px-400 py-300"
             >
-              <span className="font-sans text-body-sm text-muted">
+              <span
+                className={cn(
+                  'font-sans text-body-sm',
+                  isToday ? 'text-accent' : 'text-muted',
+                )}
+              >
                 {DAY_SHORT_ES[d.getDay()]}
               </span>
               <span
@@ -403,8 +405,7 @@ export function WeekGrid({
             ))}
           </div>
 
-          {days.map((d, dayIdx) => {
-            const isToday = today ? isSameDay(d, today) : false;
+          {days.map((_d, dayIdx) => {
             const dragOnThisDay = drag && drag.dayIndex === dayIdx;
             const dragTop = dragOnThisDay
               ? Math.min(drag.startMinutes, drag.endMinutes) * pxPerMinute
@@ -435,10 +436,7 @@ export function WeekGrid({
                   dayColRefs.current[dayIdx] = el;
                 }}
                 onPointerDown={(e) => handlePointerDown(e, dayIdx)}
-                className={cn(
-                  'relative cursor-crosshair border-l border-subtle select-none touch-none',
-                  isToday && 'bg-surface-secondary-subtle',
-                )}
+                className="relative cursor-crosshair border-l border-subtle select-none touch-none"
               >
                 {hours.map((_, hIdx) => (
                   <div
