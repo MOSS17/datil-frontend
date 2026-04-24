@@ -18,7 +18,7 @@ export function PersonalTimeCard({ personalTime, className }: PersonalTimeCardPr
   }
 
   let timeLabel = '';
-  if (hasHours) {
+  if (hasHours && personalTime.start_time && personalTime.end_time) {
     const [sh, sm] = personalTime.start_time.split(':').map(Number);
     const [eh, em] = personalTime.end_time.split(':').map(Number);
     const start = new Date();

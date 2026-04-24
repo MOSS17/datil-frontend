@@ -166,12 +166,13 @@ export function WeekGrid({
       dayIndex: number;
     }> = [];
     for (const pt of personalTimes) {
-      if (!pt.date) continue;
+      const date = pt.date;
+      if (!date) continue;
       const dayIndex = days.findIndex(
         (d) =>
-          d.getFullYear() === Number(pt.date.slice(0, 4)) &&
-          d.getMonth() === Number(pt.date.slice(5, 7)) - 1 &&
-          d.getDate() === Number(pt.date.slice(8, 10)),
+          d.getFullYear() === Number(date.slice(0, 4)) &&
+          d.getMonth() === Number(date.slice(5, 7)) - 1 &&
+          d.getDate() === Number(date.slice(8, 10)),
       );
       if (dayIndex === -1) continue;
 
