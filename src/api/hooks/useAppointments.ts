@@ -43,6 +43,7 @@ export interface CreateAppointmentInput {
   customer_phone: string;
   customer_email?: string | null;
   start_time: string;
+  end_time?: string;
   service_ids: string[];
   extra_ids?: string[];
 }

@@ -211,6 +211,11 @@ export default function CalendarioPage() {
           values.start_time,
           businessQuery.data?.timezone,
         ),
+        end_time: toBusinessRfc3339(
+          values.date,
+          values.end_time,
+          businessQuery.data?.timezone,
+        ),
         service_ids: values.service_ids,
       });
       closeDrawer();
