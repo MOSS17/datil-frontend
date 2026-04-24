@@ -15,6 +15,7 @@ export interface RegisterRequest {
   password: string;
   name: string;
   business_name: string;
+  timezone?: string;
 }
 
 export interface AuthResponse {

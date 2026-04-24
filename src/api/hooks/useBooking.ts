@@ -38,6 +38,7 @@ function businessFromApi(b: BusinessApi): Business {
     clabe: b.beneficiary_clabe ?? '',
     bank_name: b.bank_name ?? '',
     bank_holder: b.beneficiary_name ?? '',
+    timezone: b.timezone,
     created_at: b.created_at,
     updated_at: b.updated_at,
   };

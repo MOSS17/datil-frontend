@@ -74,7 +74,17 @@ export default function ConfiguracionPage() {
               <MensajeBienvenidaCard />
             </form>
           </FormProvider>
-          <CalendarIntegrationCard />
+          <div className="flex flex-col gap-600">
+            <CalendarIntegrationCard />
+            <Card>
+              <div className="flex flex-col gap-200 p-600">
+                <p className="font-sans text-body-sm text-muted">Zona horaria</p>
+                <p className="font-sans text-body font-medium text-body-emphasis">
+                  {business.timezone}
+                </p>
+              </div>
+            </Card>
+          </div>
         </div>
       )}
     </div>

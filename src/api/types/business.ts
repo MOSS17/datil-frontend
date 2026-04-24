@@ -8,6 +8,7 @@ export interface Business {
   clabe: string;
   bank_name: string;
   bank_holder: string;
+  timezone: string;
   created_at: string;
   updated_at?: string;
 }
@@ -22,6 +23,7 @@ export interface BusinessApi {
   beneficiary_clabe: string | null;
   bank_name: string | null;
   beneficiary_name: string | null;
+  timezone: string;
   created_at: string;
   updated_at: string;
 }

@@ -52,6 +52,7 @@ export default function RegisterPage() {
         business_name: values.businessName,
         email: values.email,
         password: values.password,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
       login(response.access_token, response.user, response.refresh_token);
       navigate('/dashboard', { replace: true });
