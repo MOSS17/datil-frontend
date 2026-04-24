@@ -2,6 +2,7 @@ import type { Appointment } from '@/api/types/appointments';
 import { formatPhone } from '@/lib/formatters';
 import {
   formatShortDateLower,
+  formatTimeAgo,
   formatTimeOfDay,
   isRecentlyCreated,
 } from '../utils';
@@ -22,7 +23,7 @@ export function RecentBookingRow({ appointment, now }: RecentBookingRowProps) {
   const start = new Date(appointment.start_time);
 
   return (
-    <div className="flex items-center justify-between gap-400 px-500 py-400">
+    <div className="flex items-stretch justify-between gap-400 px-500 py-400">
       <div className="flex min-w-0 flex-col gap-100">
         <div className="flex flex-col-reverse gap-100 md:flex-row md:items-center">
           <p className="font-sans text-body font-medium text-body-emphasis truncate">
@@ -41,9 +42,14 @@ export function RecentBookingRow({ appointment, now }: RecentBookingRowProps) {
           </span>
         </div>
       </div>
-      <p className="font-sans text-body-sm whitespace-nowrap">
-        📱 {formatPhone(appointment.customer_phone)}
-      </p>
+      <div className="flex flex-col items-end justify-between gap-100">
+        <p className="font-sans text-body-sm whitespace-nowrap">
+          📱 {formatPhone(appointment.customer_phone)}
+        </p>
+        <p className="font-sans text-caption text-muted whitespace-nowrap">
+          {formatTimeAgo(appointment.created_at, now)}
+        </p>
+      </div>
     </div>
   );
 }

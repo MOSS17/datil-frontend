@@ -156,3 +156,18 @@ export function isRecentlyCreated(
   const diff = (now.getTime() - new Date(createdAt).getTime()) / MS_DAY;
   return diff >= 0 && diff < days;
 }
+
+export function formatTimeAgo(iso: string, now: Date = new Date()): string {
+  const diffSec = Math.max(0, (now.getTime() - new Date(iso).getTime()) / 1000);
+  if (diffSec < 60) return 'Hace unos segundos';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `Hace ${diffMin} min`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `Hace ${diffHr} h`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 30) return `Hace ${diffDay} ${diffDay === 1 ? 'día' : 'días'}`;
+  const diffMonth = Math.floor(diffDay / 30);
+  if (diffMonth < 12) return `Hace ${diffMonth} ${diffMonth === 1 ? 'mes' : 'meses'}`;
+  const diffYear = Math.floor(diffDay / 365);
+  return `Hace ${diffYear} ${diffYear === 1 ? 'año' : 'años'}`;
+}
