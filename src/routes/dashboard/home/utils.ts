@@ -96,8 +96,8 @@ export function formatTimeOfDay(iso: string): string {
   return `${displayHours}:${String(minutes).padStart(2, '0')} ${period}`;
 }
 
-export function formatMetricRevenue(amount: number): string {
-  return `$${new Intl.NumberFormat('es-MX', { maximumFractionDigits: 0 }).format(amount)}`;
+export function formatMetricRevenue(amountCents: number): string {
+  return `$${new Intl.NumberFormat('es-MX', { maximumFractionDigits: 0 }).format(amountCents / 100)}`;
 }
 
 export function getFirstName(fullName: string): string {
