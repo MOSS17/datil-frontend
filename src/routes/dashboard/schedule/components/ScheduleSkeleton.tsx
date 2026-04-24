@@ -11,7 +11,7 @@ export function ScheduleSkeleton() {
         </div>
         <Skeleton className="hidden h-[44px] w-[160px] md:block" rounded="md" />
       </div>
-      <div className="flex flex-col gap-600 md:gap-0 md:rounded-lg md:border md:border-default md:bg-surface md:overflow-hidden md:py-400">
+      <div className="flex flex-col gap-600 border-default md:gap-0 md:rounded-lg md:border md:bg-surface md:overflow-hidden md:py-400">
         {DAY_ORDER.map((d, idx) => (
           <div key={d}>
             <div className="flex flex-col gap-600 w-full md:flex-row md:gap-[64px] md:items-center md:px-600 md:py-400">

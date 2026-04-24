@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { Save } from 'lucide-react';
 import { useWorkdays, useUpdateWorkdays } from '@/api/hooks/useSchedule';
 import { Button } from '@/components/ui/Button';
+import { Toast, type ToastVariant } from '@/components/ui/Toast';
+import { ApiError } from '@/api/client';
 import { PageHeader } from '../components/PageHeader';
 import { ErrorState } from '../components/ErrorState';
 import { DAY_ORDER } from './constants';
@@ -14,6 +17,20 @@ export default function SchedulePage() {
   const { data, isLoading, error, refetch } = useWorkdays();
   const updateWorkdays = useUpdateWorkdays();
   const { draft, toggleDay, changeHour, addHour, removeHour } = useWorkdayDraft(data);
+  const [toast, setToast] = useState<{ message: string; variant: ToastVariant } | null>(null);
+
+  const handleSave = async () => {
+    try {
+      await updateWorkdays.mutateAsync(toWorkdays(draft));
+      setToast({ message: 'Disponibilidad guardada', variant: 'success' });
+    } catch (err) {
+      const msg =
+        err instanceof ApiError && err.message
+          ? err.message
+          : 'No pudimos guardar tu disponibilidad. Inténtalo de nuevo.';
+      setToast({ message: msg, variant: 'error' });
+    }
+  };
 
   if (isLoading || draft.length === 0) return <ScheduleSkeleton />;
 
@@ -37,7 +54,7 @@ export default function SchedulePage() {
       variant="primary"
       isLoading={updateWorkdays.isPending}
       leftIcon={<Save aria-hidden size={16} strokeWidth={1.75} />}
-      onClick={() => updateWorkdays.mutateAsync(toWorkdays(draft))}
+      onClick={handleSave}
     >
       Guardar Cambios
     </Button>
@@ -52,7 +69,7 @@ export default function SchedulePage() {
         actions={<div className="hidden md:block">{saveButton}</div>}
       />
 
-      <div className="flex flex-col gap-600 md:gap-0 md:rounded-lg md:border md:border-default md:bg-surface md:overflow-hidden md:py-400">
+      <div className="flex flex-col gap-600 border-default md:gap-0 md:rounded-lg md:border md:bg-surface md:overflow-hidden md:py-400">
         {orderedDays.map((day, idx) => (
           <div key={day.day}>
             <DayRow
@@ -75,11 +92,18 @@ export default function SchedulePage() {
           fullWidth
           isLoading={updateWorkdays.isPending}
           leftIcon={<Save aria-hidden size={16} strokeWidth={1.75} />}
-          onClick={() => updateWorkdays.mutateAsync(toWorkdays(draft))}
+          onClick={handleSave}
         >
           Guardar Cambios
         </Button>
       </div>
+
+      <Toast
+        open={Boolean(toast)}
+        message={toast?.message ?? ''}
+        variant={toast?.variant ?? 'success'}
+        onClose={() => setToast(null)}
+      />
     </main>
   );
 }
