@@ -2,12 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { Toast, type ToastVariant } from '@/components/ui/Toast';
 import { useAppointments, useCreateAppointment } from '@/api/hooks/useAppointments';
 import { enrichAppointments } from '@/lib/appointmentEnrich';
 import { useCreatePersonalTime, usePersonalTime } from '@/api/hooks/useSchedule';
 import { useMyBusiness } from '@/api/hooks/useBusiness';
 import { useServices } from '@/api/hooks/useServices';
 import { useCategories } from '@/api/hooks/useCategories';
+import type { Appointment } from '@/api/types/appointments';
+import { BookingDetailDrawer } from '@/routes/dashboard/home/components/BookingDetailDrawer';
 import { CalendarHeader } from './components/CalendarHeader';
 import { MobileCalendarTopBar } from './components/MobileCalendarTopBar';
 import { WeekGrid, type RangeSelection } from './components/WeekGrid';
@@ -45,6 +48,13 @@ export default function CalendarioPage() {
   } | null>(null);
   const [citaError, setCitaError] = useState<string | null>(null);
   const [tiempoError, setTiempoError] = useState<string | null>(null);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(
+    null,
+  );
+  const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
+  const [toast, setToast] = useState<{ message: string; variant: ToastVariant } | null>(
+    null,
+  );
 
   const appointmentsQuery = useAppointments();
   const personalTimeQuery = usePersonalTime();
@@ -61,13 +71,25 @@ export default function CalendarioPage() {
 
   const weekEnd = useMemo(() => addDays(weekStart, 7), [weekStart]);
 
-  const weekAppointments = useMemo(() => {
-    const all = enrichAppointments(appointmentsQuery.data ?? [], servicesQuery.data);
-    return all.filter((a) => {
-      const start = new Date(a.start_time);
-      return start >= weekStart && start < weekEnd;
-    });
-  }, [appointmentsQuery.data, servicesQuery.data, weekStart, weekEnd]);
+  const allAppointments = useMemo(
+    () => enrichAppointments(appointmentsQuery.data ?? [], servicesQuery.data),
+    [appointmentsQuery.data, servicesQuery.data],
+  );
+  const weekAppointments = useMemo(
+    () =>
+      allAppointments.filter((a) => {
+        const start = new Date(a.start_time);
+        return start >= weekStart && start < weekEnd;
+      }),
+    [allAppointments, weekStart, weekEnd],
+  );
+  const selectedEnriched = useMemo(() => {
+    if (!selectedAppointment) return null;
+    return (
+      allAppointments.find((a) => a.id === selectedAppointment.id) ??
+      selectedAppointment
+    );
+  }, [selectedAppointment, allAppointments]);
 
   const weekPersonalTimes = useMemo(() => {
     const all = personalTimeQuery.data ?? [];
@@ -115,6 +137,13 @@ export default function CalendarioPage() {
     setCitaError(null);
     setTiempoError(null);
     setDrawerOpen(true);
+  }, []);
+  const handleSelectAppointment = useCallback((appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setDetailDrawerOpen(true);
+  }, []);
+  const closeDetailDrawer = useCallback(() => {
+    setDetailDrawerOpen(false);
   }, []);
 
   const handleCitaSubmit = async (values: CitaFormValues) => {
@@ -212,6 +241,7 @@ export default function CalendarioPage() {
             personalTimes={weekPersonalTimes}
             today={today}
             onSelectRange={handleSelectRange}
+            onSelectAppointment={handleSelectAppointment}
           />
         </div>
         <div className="md:hidden">
@@ -227,6 +257,7 @@ export default function CalendarioPage() {
             personalTimes={weekPersonalTimes}
             today={today}
             onSelectRange={handleSelectRange}
+            onSelectAppointment={handleSelectAppointment}
           />
         </div>
       </section>
@@ -248,6 +279,30 @@ export default function CalendarioPage() {
         onSubmitTiempo={handleTiempoSubmit}
         citaConflictMessage={citaError}
         tiempoInfoMessage={tiempoError}
+      />
+
+      <BookingDetailDrawer
+        appointment={selectedEnriched}
+        open={detailDrawerOpen}
+        onClose={closeDetailDrawer}
+        services={services}
+        categories={categories}
+        business={businessQuery.data}
+        onSaved={() =>
+          setToast({ message: 'Cita actualizada', variant: 'success' })
+        }
+        onDeleted={() => {
+          setDetailDrawerOpen(false);
+          setToast({ message: 'Cita eliminada', variant: 'success' });
+        }}
+        onError={(message) => setToast({ message, variant: 'error' })}
+      />
+
+      <Toast
+        open={Boolean(toast)}
+        message={toast?.message ?? ''}
+        variant={toast?.variant ?? 'success'}
+        onClose={() => setToast(null)}
       />
     </>
   );

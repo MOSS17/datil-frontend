@@ -23,6 +23,7 @@ interface DayViewProps {
   startHour?: number;
   endHour?: number;
   onSelectRange?: (range: RangeSelection) => void;
+  onSelectAppointment?: (appointment: Appointment) => void;
 }
 
 const ROW_HEIGHT_PX = 96;
@@ -58,6 +59,7 @@ export function DayView({
   startHour = 8,
   endHour = 15,
   onSelectRange,
+  onSelectAppointment,
 }: DayViewProps) {
   const hours = useMemo(
     () => Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i),
@@ -281,14 +283,20 @@ export function DayView({
               (minutesSinceStart(end) - minutesSinceStart(start)) * pxPerMinute,
             );
             return (
-              <div
+              <button
+                type="button"
                 key={a.id}
-                className="absolute inset-x-0 cursor-default"
+                className={cn(
+                  'absolute inset-x-0 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                  onSelectAppointment ? 'cursor-pointer' : 'cursor-default',
+                )}
                 style={{ top: topPx, height: heightPx }}
                 onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => onSelectAppointment?.(a)}
+                aria-label={`Ver detalles de cita de ${a.customer_name}`}
               >
                 <AppointmentCard appointment={a} className="h-full" />
-              </div>
+              </button>
             );
           })}
         </div>

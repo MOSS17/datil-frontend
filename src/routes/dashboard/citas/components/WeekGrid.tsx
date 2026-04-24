@@ -26,6 +26,7 @@ interface WeekGridProps {
   startHour?: number;
   endHour?: number;
   onSelectRange?: (range: RangeSelection) => void;
+  onSelectAppointment?: (appointment: Appointment) => void;
 }
 
 const ROW_HEIGHT_PX = 88;
@@ -53,6 +54,7 @@ export function WeekGrid({
   startHour = 8,
   endHour = 15,
   onSelectRange,
+  onSelectAppointment,
 }: WeekGridProps) {
   const hours = useMemo(
     () => Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i),
@@ -321,14 +323,20 @@ export function WeekGrid({
               {positionedAppointments
                 .filter((a) => a.dayIndex === dayIdx)
                 .map((a) => (
-                  <div
+                  <button
+                    type="button"
                     key={a.appointment.id}
-                    className="absolute inset-x-0 cursor-default"
+                    className={cn(
+                      'absolute inset-x-0 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                      onSelectAppointment ? 'cursor-pointer' : 'cursor-default',
+                    )}
                     style={{ top: a.topPx, height: a.heightPx }}
                     onPointerDown={(e) => e.stopPropagation()}
+                    onClick={() => onSelectAppointment?.(a.appointment)}
+                    aria-label={`Ver detalles de cita de ${a.appointment.customer_name}`}
                   >
                     <AppointmentCard appointment={a.appointment} className="h-full" />
-                  </div>
+                  </button>
                 ))}
             </div>
           );
