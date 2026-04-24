@@ -77,7 +77,7 @@ function SidebarNav({ onNavigate }: { onNavigate: () => void }) {
               'flex h-1000 items-center gap-300 rounded-md px-400 font-sans text-body-sm transition-colors',
               isActive
                 ? 'bg-surface-secondary-subtle text-primary'
-                : 'text-body hover:bg-surface-secondary-subtle',
+                : 'hover:bg-surface-secondary-subtle',
             )
           }
         >
