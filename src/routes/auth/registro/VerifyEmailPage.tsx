@@ -34,7 +34,7 @@ export default function VerifyEmailPage() {
   const handleComplete = async (fullCode: string) => {
     try {
       const response = await verifyEmail.mutateAsync({ email, code: fullCode });
-      login(response.token, response.user);
+      login(response.access_token, response.user, response.refresh_token);
       navigate('/dashboard', { replace: true });
     } catch (error) {
       const message =

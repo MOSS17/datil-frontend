@@ -67,12 +67,9 @@ export default function ServicesPage() {
   const handleCreate = async (values: CategoryFormValues) => {
     setSubmitError(null);
     try {
-      const nextOrder = (categoriesQuery.data?.length ?? 0) + 1;
       await createCategory.mutateAsync({
         name: values.name,
-        description: '',
         allow_multiple: values.allowMultiple,
-        display_order: nextOrder,
       });
       setDrawerOpen(false);
     } catch (error) {

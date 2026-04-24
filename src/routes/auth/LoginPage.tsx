@@ -57,7 +57,7 @@ export default function LoginPage() {
   const onSubmit = handleSubmit(async (values) => {
     try {
       const response = await loginMutation.mutateAsync(values);
-      login(response.token, response.user);
+      login(response.access_token, response.user, response.refresh_token);
       navigate(redirect, { replace: true });
     } catch (error) {
       const message =

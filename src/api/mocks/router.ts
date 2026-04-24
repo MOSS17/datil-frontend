@@ -1,5 +1,6 @@
 // TODO(mocks): matches incoming apiClient calls to mock data so the frontend
 // works without a backend (enabled in dev + prod preview). Delete when the real API is wired up.
+import { getToken } from '@/auth/token';
 import {
   mockAppointments,
   mockBusiness,
@@ -7,13 +8,30 @@ import {
   mockCategories,
   mockPersonalTime,
   mockServices,
-  mockUser,
   mockWorkdays,
 } from './data';
 
 export const MOCKS_ENABLED = import.meta.env.VITE_API_MOCKS !== 'false';
 
 const MOCK_LATENCY_MS = 200;
+
+// Endpoints covered by the real backend. When an authenticated request matches
+// one of these, skip the mock handler so the fetch hits the real server.
+// Public booking flow requests (no token) still fall through to mocks below.
+const AUTHED_REAL: RegExp[] = [
+  /^\/business$/,
+  /^\/business\/bank$/,
+  /^\/business\/logo$/,
+  /^\/services(\/.*)?$/,
+  /^\/categories(\/.*)?$/,
+];
+
+// Endpoints that always go real, even without a token (signup/login).
+const ALWAYS_REAL: RegExp[] = [
+  /^\/auth\/login$/,
+  /^\/auth\/signup$/,
+  /^\/auth\/refresh$/,
+];
 
 function delay<T>(value: T): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), MOCK_LATENCY_MS));
@@ -42,28 +60,17 @@ function nowId(prefix: string) {
 }
 
 const HANDLERS: MockHandler[] = [
-  // ── Auth ─────────────────────────────────────────────────────────────────
-  { method: 'GET', pattern: /^\/auth\/me$/, handler: () => mockUser },
-
-  // ── Business ────────────────────────────────────────────────────────────
+  // ── Business (public booking-flow fallbacks) ────────────────────────────
+  // Real backend doesn't serve by slug yet, so booking stays mocked.
   {
     method: 'GET',
-    pattern: /^\/businesses\/slug\/([^/]+)$/,
-    handler: (_ctx, [slug]) => ({ ...mockBusiness, slug }),
+    pattern: /^\/business\/slug\/([^/]+)$/,
+    handler: (_ctx, [slug]) => ({ ...mockBusiness, url: slug }),
   },
   {
     method: 'GET',
-    pattern: /^\/businesses\/([^/]+)$/,
+    pattern: /^\/business\/([^/]+)$/,
     handler: (_ctx, [id]) => ({ ...mockBusiness, id }),
-  },
-  {
-    method: 'PUT',
-    pattern: /^\/businesses\/([^/]+)$/,
-    handler: ({ body }, [id]) => ({
-      ...mockBusiness,
-      id,
-      ...(typeof body === 'object' && body !== null ? body : {}),
-    }),
   },
 
   // ── Categories ──────────────────────────────────────────────────────────
@@ -99,7 +106,7 @@ const HANDLERS: MockHandler[] = [
     handler: () => undefined,
   },
 
-  // ── Services ────────────────────────────────────────────────────────────
+  // ── Services (booking-flow fallback: public, no token) ─────────────────
   {
     method: 'GET',
     pattern: /^\/services$/,
@@ -114,28 +121,6 @@ const HANDLERS: MockHandler[] = [
     method: 'GET',
     pattern: /^\/services\/([^/]+)$/,
     handler: (_ctx, [id]) => mockServices.find((s) => s.id === id) ?? mockServices[0],
-  },
-  {
-    method: 'POST',
-    pattern: /^\/services$/,
-    handler: ({ body }) => ({
-      id: nowId('srv'),
-      ...(typeof body === 'object' && body !== null ? body : {}),
-    }),
-  },
-  {
-    method: 'PUT',
-    pattern: /^\/services\/([^/]+)$/,
-    handler: ({ body }, [id]) => ({
-      ...(mockServices.find((s) => s.id === id) ?? mockServices[0]),
-      ...(typeof body === 'object' && body !== null ? body : {}),
-      id,
-    }),
-  },
-  {
-    method: 'DELETE',
-    pattern: /^\/services\/([^/]+)$/,
-    handler: () => undefined,
   },
 
   // ── Appointments ────────────────────────────────────────────────────────
@@ -235,6 +220,10 @@ export function resolveMock(
 
   const { path, query } = stripQuery(endpoint);
   const upperMethod = method.toUpperCase();
+
+  if (ALWAYS_REAL.some((re) => re.test(path))) return null;
+
+  if (getToken() && AUTHED_REAL.some((re) => re.test(path))) return null;
 
   for (const entry of HANDLERS) {
     if (entry.method !== upperMethod) continue;

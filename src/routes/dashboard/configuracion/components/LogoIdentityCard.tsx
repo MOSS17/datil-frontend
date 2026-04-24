@@ -5,11 +5,12 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useUploadBusinessLogo } from '@/api/hooks/useBusiness';
+import { ApiError } from '@/api/client';
 import type { Business } from '@/api/types/business';
 import type { ConfiguracionFormValues } from '../schema';
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
-const ACCEPTED_LOGO_MIME = ['image/png', 'image/jpeg', 'image/svg+xml'];
+const ACCEPTED_LOGO_MIME = ['image/png', 'image/jpeg', 'image/webp'];
 
 interface LogoIdentityCardProps {
   business: Business;
@@ -35,7 +36,7 @@ export function LogoIdentityCard({ business }: LogoIdentityCardProps) {
     if (!file) return;
 
     if (!ACCEPTED_LOGO_MIME.includes(file.type)) {
-      setLogoError('Formato no soportado. Usa PNG, JPG o SVG.');
+      setLogoError('Formato no soportado. Usa PNG, JPG o WebP.');
       return;
     }
     if (file.size > MAX_LOGO_BYTES) {
@@ -46,7 +47,12 @@ export function LogoIdentityCard({ business }: LogoIdentityCardProps) {
     try {
       await uploadLogo.mutateAsync({ id: business.id, file });
     } catch (err) {
-      setLogoError(err instanceof Error ? err.message : 'No se pudo subir el logo');
+      if (err instanceof ApiError) {
+        const fieldMsg = err.errors?.logo;
+        setLogoError(fieldMsg ?? err.message);
+      } else {
+        setLogoError(err instanceof Error ? err.message : 'No se pudo subir el logo');
+      }
     }
   };
 
@@ -76,7 +82,7 @@ export function LogoIdentityCard({ business }: LogoIdentityCardProps) {
             >
               Subir Logo
             </Button>
-            <p className="font-sans text-caption text-muted">PNG, JPG o SVG. Máx 2MB.</p>
+            <p className="font-sans text-caption text-muted">PNG, JPG o WebP. Máx 2MB.</p>
             {logoError && (
               <p role="alert" className="font-sans text-caption text-error">
                 {logoError}

@@ -1,8 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { ENDPOINTS } from '@/api/endpoints';
-import { useAuth } from '@/auth/AuthContext';
-import type { Business } from '@/api/types/business';
+import type {
+  Business,
+  BusinessApi,
+  UpdateBankRequest,
+  UpdateBusinessRequest,
+} from '@/api/types/business';
 
 export const businessKeys = {
   all: ['business'] as const,
@@ -10,10 +14,33 @@ export const businessKeys = {
   bySlug: (slug: string) => [...businessKeys.all, 'slug', slug] as const,
 };
 
+function fromApi(b: BusinessApi): Business {
+  return {
+    id: b.id,
+    name: b.name,
+    description: b.description ?? '',
+    slug: b.url,
+    logo_url: b.logo_url ?? '',
+    location: b.location ?? '',
+    clabe: b.beneficiary_clabe ?? '',
+    bank_name: b.bank_name ?? '',
+    bank_holder: b.beneficiary_name ?? '',
+    created_at: b.created_at,
+    updated_at: b.updated_at,
+  };
+}
+
+export function useMyBusiness() {
+  return useQuery({
+    queryKey: businessKeys.all,
+    queryFn: async () => fromApi(await apiClient<BusinessApi>(ENDPOINTS.BUSINESS)),
+  });
+}
+
 export function useBusiness(id: string) {
   return useQuery({
     queryKey: businessKeys.detail(id),
-    queryFn: () => apiClient<Business>(`${ENDPOINTS.BUSINESS}/${id}`),
+    queryFn: async () => fromApi(await apiClient<BusinessApi>(`${ENDPOINTS.BUSINESS}/${id}`)),
     enabled: Boolean(id),
   });
 }
@@ -21,33 +48,56 @@ export function useBusiness(id: string) {
 export function useBusinessBySlug(slug: string) {
   return useQuery({
     queryKey: businessKeys.bySlug(slug),
-    queryFn: () => apiClient<Business>(`${ENDPOINTS.BUSINESS}/slug/${slug}`),
+    queryFn: async () =>
+      fromApi(await apiClient<BusinessApi>(`${ENDPOINTS.BUSINESS}/slug/${slug}`)),
     enabled: Boolean(slug),
   });
-}
-
-export function useMyBusiness() {
-  const { user } = useAuth();
-  return useBusiness(user?.business_id ?? '');
 }
 
 export function useUpdateBusiness() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Business> }) =>
-      apiClient<Business>(`${ENDPOINTS.BUSINESS}/${id}`, { method: 'PUT', body: data }),
+    mutationFn: async (data: { name: string; location?: string; description?: string }) => {
+      const body: UpdateBusinessRequest = {
+        name: data.name,
+        location: data.location && data.location.length > 0 ? data.location : null,
+        description:
+          data.description && data.description.length > 0 ? data.description : null,
+      };
+      return fromApi(
+        await apiClient<BusinessApi>(ENDPOINTS.BUSINESS, { method: 'PUT', body }),
+      );
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: businessKeys.all }),
   });
 }
 
-// TODO(backend): logo upload endpoint is not implemented yet.
-// Expected contract: POST /businesses/:id/logo with multipart/form-data (field "logo").
-// Response: updated Business with logo_url. Replace the throw below once the backend ships.
+export function useUpdateBusinessBank() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: UpdateBankRequest) =>
+      fromApi(
+        await apiClient<BusinessApi>(`${ENDPOINTS.BUSINESS}/bank`, {
+          method: 'PUT',
+          body: data,
+        }),
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: businessKeys.all }),
+  });
+}
+
 export function useUploadBusinessLogo() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id: _id, file: _file }: { id: string; file: File }) => {
-      throw new Error('Subida de logo aún no implementada en el backend');
+    mutationFn: async ({ file }: { id?: string; file: File }) => {
+      const formData = new FormData();
+      formData.append('logo', file);
+      return fromApi(
+        await apiClient<BusinessApi>(`${ENDPOINTS.BUSINESS}/logo`, {
+          method: 'PUT',
+          body: formData,
+        }),
+      );
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: businessKeys.all }),
   });

@@ -21,12 +21,16 @@ export function groupServicesByCategory(
     byCategory.set(svc.category_id, bucket);
   }
 
-  return categories
-    .slice()
-    .sort((a, b) => a.display_order - b.display_order)
-    .map((category) => ({
-      category,
-      services: (byCategory.get(category.id) ?? []).slice().sort((a, b) => a.name.localeCompare(b.name)),
-    }))
-    .filter((group) => group.services.length > 0);
+  // Backend returns categories ordered by created_at; rely on that natural
+  // ordering instead of a frontend-defined display_order (which the backend
+  // doesn't track). Drag-to-reorder will need a real backend column first.
+  // Empty categories are kept so newly-created ones render as empty cards
+  // (with an "add service" affordance in CategoryHeader); previously they
+  // were filtered out and silently disappeared from the page.
+  return categories.map((category) => ({
+    category,
+    services: (byCategory.get(category.id) ?? [])
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  }));
 }

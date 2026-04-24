@@ -1,8 +1,8 @@
 // TODO(mocks): dev-only fixtures. Delete this file and the mock router when the backend is ready.
 import type { User } from '@/api/types/auth';
-import type { Business } from '@/api/types/business';
+import type { BusinessApi } from '@/api/types/business';
 import type { Category } from '@/api/types/categories';
-import type { Service } from '@/api/types/services';
+import type { ServiceApi } from '@/api/types/services';
 import type { Appointment } from '@/api/types/appointments';
 import type { Workday, PersonalTime } from '@/api/types/schedule';
 import type { CalendarIntegration } from '@/api/types/calendar';
@@ -14,18 +14,19 @@ export const mockUser: User = {
   business_id: 'dev-business',
 };
 
-export const mockBusiness: Business = {
+export const mockBusiness: BusinessApi = {
   id: 'dev-business',
   name: 'Lupita Urias Makeup Artist',
   description:
     'Maquillaje profesional para novias, eventos y sesiones editoriales en Culiacán.',
-  slug: 'lupita-urias',
-  logo_url: '',
+  url: 'lupita-urias',
+  logo_url: null,
   location: 'Culiacán, Sinaloa',
-  clabe: '012180001234567890',
+  beneficiary_clabe: '012180001234567890',
   bank_name: 'BBVA',
-  bank_holder: 'Guadalupe Urias Soto',
+  beneficiary_name: 'Guadalupe Urias Soto',
   created_at: '2025-08-01T15:00:00.000Z',
+  updated_at: '2025-08-01T15:00:00.000Z',
 };
 
 export const mockCategories: Category[] = [
@@ -63,7 +64,7 @@ export const mockCategories: Category[] = [
   },
 ];
 
-export const mockServices: Service[] = [
+export const mockServices: ServiceApi[] = [
   {
     id: 'srv-social',
     category_id: 'cat-makeup',
@@ -71,7 +72,7 @@ export const mockServices: Service[] = [
     description: 'Maquillaje para eventos de día o noche.',
     min_price: 120000,
     max_price: 150000,
-    duration_minutes: 60,
+    duration: 60,
     advance_payment_amount: 30000,
     is_extra: false,
     is_active: true,
@@ -83,7 +84,7 @@ export const mockServices: Service[] = [
     description: 'Incluye prueba previa y retoque el día del evento.',
     min_price: 450000,
     max_price: 600000,
-    duration_minutes: 120,
+    duration: 120,
     advance_payment_amount: 100000,
     is_extra: false,
     is_active: true,
@@ -95,7 +96,7 @@ export const mockServices: Service[] = [
     description: 'Para sesiones fotográficas o pasarela.',
     min_price: 200000,
     max_price: 250000,
-    duration_minutes: 90,
+    duration: 90,
     advance_payment_amount: 50000,
     is_extra: false,
     is_active: true,
@@ -107,7 +108,7 @@ export const mockServices: Service[] = [
     description: 'Recogido o semirecogido con accesorios.',
     min_price: 100000,
     max_price: 180000,
-    duration_minutes: 75,
+    duration: 75,
     advance_payment_amount: 30000,
     is_extra: false,
     is_active: true,
@@ -118,9 +119,9 @@ export const mockServices: Service[] = [
     name: 'Blower Profesional',
     description: 'Secado y styling.',
     min_price: 60000,
-    max_price: 60000,
-    duration_minutes: 45,
-    advance_payment_amount: 0,
+    max_price: null,
+    duration: 45,
+    advance_payment_amount: null,
     is_extra: false,
     is_active: true,
   },
@@ -131,8 +132,8 @@ export const mockServices: Service[] = [
     description: 'Aplicación de pestañas para complementar el maquillaje.',
     min_price: 25000,
     max_price: 40000,
-    duration_minutes: 15,
-    advance_payment_amount: 0,
+    duration: 15,
+    advance_payment_amount: null,
     is_extra: true,
     is_active: true,
   },
@@ -142,9 +143,9 @@ export const mockServices: Service[] = [
     name: 'Acabado Airbrush',
     description: 'Upgrade del maquillaje base a técnica airbrush.',
     min_price: 50000,
-    max_price: 50000,
-    duration_minutes: 0,
-    advance_payment_amount: 0,
+    max_price: null,
+    duration: 0,
+    advance_payment_amount: null,
     is_extra: true,
     is_active: true,
   },
@@ -154,9 +155,9 @@ export const mockServices: Service[] = [
     name: 'Ondas o Planchado',
     description: 'Maquillaje completo para eventos especiales, bodas y fiestas.',
     min_price: 25000,
-    max_price: 25000,
-    duration_minutes: 30,
-    advance_payment_amount: 0,
+    max_price: null,
+    duration: 30,
+    advance_payment_amount: null,
     is_extra: true,
     is_active: true,
   },
@@ -166,9 +167,9 @@ export const mockServices: Service[] = [
     name: 'Semi Recogido',
     description: 'Maquillaje completo para eventos especiales, bodas y fiestas.',
     min_price: 65000,
-    max_price: 65000,
-    duration_minutes: 30,
-    advance_payment_amount: 0,
+    max_price: null,
+    duration: 30,
+    advance_payment_amount: null,
     is_extra: true,
     is_active: true,
   },
@@ -179,8 +180,8 @@ export const mockServices: Service[] = [
     description: 'Maquillaje completo para eventos especiales, bodas y fiestas.',
     min_price: 35000,
     max_price: 45000,
-    duration_minutes: 30,
-    advance_payment_amount: 0,
+    duration: 30,
+    advance_payment_amount: null,
     is_extra: true,
     is_active: true,
   },

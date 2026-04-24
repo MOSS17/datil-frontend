@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useRegister } from '@/api/hooks/useAuth';
+import { useAuth } from '@/auth/AuthContext';
 import { ApiError } from '@/api/client';
 import { AuthLayout } from './components/AuthLayout';
 
@@ -29,6 +30,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 export default function RegisterPage() {
   const navigate = useNavigate();
   const register = useRegister();
+  const { login } = useAuth();
 
   const {
     register: registerField,
@@ -42,13 +44,17 @@ export default function RegisterPage() {
 
   const onSubmit = handleSubmit(async (values) => {
     try {
-      await register.mutateAsync({
+      // Backend signs the user in immediately on signup — email verification
+      // was dropped in phase 1, so skip the OTP step and go straight to the
+      // dashboard with the returned token pair.
+      const response = await register.mutateAsync({
         name: values.name,
         business_name: values.businessName,
         email: values.email,
         password: values.password,
       });
-      navigate(`/registro/verificar?email=${encodeURIComponent(values.email)}`);
+      login(response.access_token, response.user, response.refresh_token);
+      navigate('/dashboard', { replace: true });
     } catch (error) {
       const message =
         error instanceof ApiError
