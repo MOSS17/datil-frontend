@@ -314,22 +314,22 @@ function AppleProvider({ showToast }: AppleProviderProps) {
           tileClass="bg-surface-secondary"
           label="Apple Calendar"
           connected={false}
+          action={
+            <Button
+              variant="secondary"
+              size="md"
+              leftIcon={<LinkIcon aria-hidden size={16} strokeWidth={1.75} />}
+              isLoading={connect.isPending}
+              onClick={handleConnect}
+            >
+              Conectar Apple Calendar
+            </Button>
+          }
         />
         <p className="font-sans text-body-sm text-muted">
           Añade tus citas de Dátil a tu calendario de Apple automáticamente.
           Funciona en iPhone, iPad y Mac.
         </p>
-        <div>
-          <Button
-            variant="primary"
-            size="md"
-            leftIcon={<LinkIcon aria-hidden size={16} strokeWidth={1.75} />}
-            isLoading={connect.isPending}
-            onClick={handleConnect}
-          >
-            Conectar Apple Calendar
-          </Button>
-        </div>
       </div>
     );
   }
