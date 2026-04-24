@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useAppointments, useCreateAppointment } from '@/api/hooks/useAppointments';
@@ -18,10 +19,25 @@ import type { CitaFormValues, TiempoPersonalFormValues } from './schema';
 import { ApiError } from '@/api/client';
 
 export default function CalendarioPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const today = useMemo(() => new Date(), []);
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeekMon(new Date()));
   const [selectedDay, setSelectedDay] = useState<Date>(() => new Date());
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // If we arrived here from "Nueva Cita", animate the drawer open on mount
+  // (start closed for one paint, then flip to open so the slide transition plays).
+  // Consume the nav state so refresh or subsequent visits don't auto-open.
+  useEffect(() => {
+    if ((location.state as { openDrawer?: boolean } | null)?.openDrawer) {
+      const raf = requestAnimationFrame(() => setDrawerOpen(true));
+      navigate(location.pathname, { replace: true, state: null });
+      return () => cancelAnimationFrame(raf);
+    }
+    // Mount-only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [prefill, setPrefill] = useState<{
     date: string;
     start_time: string;

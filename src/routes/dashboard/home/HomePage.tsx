@@ -74,7 +74,7 @@ export default function HomePage() {
         Compartir Página de Reservas
       </Button>
       <Button
-        onClick={() => navigate('/dashboard/citas')}
+        onClick={() => navigate('/dashboard/citas', { state: { openDrawer: true } })}
         leftIcon={<Plus aria-hidden size={16} strokeWidth={1.75} />}
       >
         Nueva Cita
@@ -146,7 +146,7 @@ export default function HomePage() {
       </Button>
       <Button
         fullWidth
-        onClick={() => navigate('/dashboard/citas')}
+        onClick={() => navigate('/dashboard/citas', { state: { openDrawer: true } })}
         leftIcon={<Plus aria-hidden size={16} strokeWidth={1.75} />}
       >
         Nueva Cita
