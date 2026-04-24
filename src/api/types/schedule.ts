@@ -18,13 +18,17 @@ export interface Workday {
 export interface PersonalTime {
   id: string;
   user_id: string;
-  type: PersonalTimeType;
-  date: string;
   start_date: string;
   end_date: string;
-  start_time: string;
-  end_time: string;
-  reason: string;
+  // Backend schema doesn't persist start/end clock times for full-day or
+  // date-range blocks — they're only set for the `hours` variant.
+  start_time?: string;
+  end_time?: string;
+  // Derived client-side from the date/time columns above. The backend has
+  // no columns for these, so they don't round-trip.
+  type?: PersonalTimeType;
+  date?: string;
+  reason?: string;
 }
 
 export interface CreatePersonalTimeRequest {
@@ -34,5 +38,5 @@ export interface CreatePersonalTimeRequest {
   end_date?: string;
   start_time?: string;
   end_time?: string;
-  reason: string;
+  reason?: string;
 }

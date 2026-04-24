@@ -1,6 +1,9 @@
-// Demo-mode mock router. When VITE_API_MOCKS is truthy (default), every
-// API call resolves against the handlers below and no real backend is
-// contacted. Set VITE_API_MOCKS=false to point at a live backend.
+// Mock router. Two modes:
+//   VITE_API_MOCKS=true (default) — demo mode. Every API call resolves
+//   against the handlers below; no real backend is contacted.
+//   VITE_API_MOCKS=false — real-backend mode. Only paths in
+//   MOCK_ALLOWLIST still resolve here (calendar is stubbed on the backend
+//   pending Phase 6); everything else falls through to the live backend.
 import {
   buildMockBookingServices,
   createDemoAuthResponse,
@@ -15,6 +18,10 @@ import {
 import type { TimeSlot } from '@/api/types/booking';
 
 export const MOCKS_ENABLED = import.meta.env.VITE_API_MOCKS !== 'false';
+
+// When MOCKS_ENABLED is false, only requests matching one of these patterns
+// still hit the mock router. Everything else is proxied to the real backend.
+const MOCK_ALLOWLIST: RegExp[] = [/^\/calendar\//];
 
 const MOCK_LATENCY_MS = 200;
 const MOCK_TIMEZONE_OFFSET = '-06:00';
@@ -401,9 +408,12 @@ export function resolveMock(
   endpoint: string,
   body: unknown,
 ): Promise<unknown> | null {
-  if (!MOCKS_ENABLED) return null;
-
   const { path, query } = stripQuery(endpoint);
+
+  if (!MOCKS_ENABLED && !MOCK_ALLOWLIST.some((re) => re.test(path))) {
+    return null;
+  }
+
   const upperMethod = method.toUpperCase();
 
   for (const entry of HANDLERS) {

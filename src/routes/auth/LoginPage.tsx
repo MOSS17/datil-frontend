@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Info } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -104,12 +104,9 @@ export default function LoginPage() {
             />
           </div>
 
-          <Link
-            to="/login/recuperar"
-            className="font-sans text-body font-medium text-primary underline"
-          >
-            Olvidé mi contraseña
-          </Link>
+          {/* Password-reset flow is out of scope per backend PHASES.md —
+              the route and page remain mounted so deep links don't 404, but
+              the entry point is gated until the backend ships it. */}
 
           <div className="flex flex-col gap-600">
             <Button type="submit" variant="primary" fullWidth isLoading={isSubmitting}>

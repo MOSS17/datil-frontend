@@ -23,14 +23,14 @@ export function DayRow({
   const isDisabled = !day.is_enabled;
 
   return (
-    <div className="flex gap-[64px] items-start justify-center px-600 py-400 w-full">
+    <div className="flex flex-col gap-600 w-full md:flex-row md:gap-[64px] md:items-start md:justify-center md:px-600 md:py-400">
       <DayToggle
         enabled={day.is_enabled}
         label={DAY_NAMES[day.day]}
         onToggle={onToggle}
       />
 
-      <div className="flex flex-1 min-w-0 flex-col gap-400 items-start">
+      <div className="flex flex-1 min-w-0 flex-col gap-400 items-start w-full">
         {day.hours.map((hour, idx) => (
           <div key={hour._key} className="flex items-center gap-400 w-full">
             <TimeSelect

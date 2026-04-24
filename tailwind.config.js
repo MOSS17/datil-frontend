@@ -244,9 +244,14 @@ export default {
         },
 
         // ─── Borders ───
-        // DEFAULT makes `border` alone set the default color; we ALSO alias
-        // `default` as an explicit key so `border-default` is a valid utility
-        // (Tailwind otherwise exposes DEFAULT only as `border-border`).
+        // DEFAULT backs `border` alone + `divide-border` fallback color.
+        // Named keys here emit the BASE class (e.g. `.border-default`); the
+        // matching `@utility border-default { ... }` blocks in src/index.css
+        // provide the same value AND generate responsive/state variants
+        // (`md:border-default`, `hover:border-accent`, …). Nested keys under
+        // @config alone don't emit variants in Tailwind v4.
+        // If you add a border color here, also add an @utility for it in
+        // src/index.css — otherwise the variant form silently no-ops.
         border: {
           DEFAULT: '#E2DBCF',
           default: '#E2DBCF',
@@ -265,8 +270,6 @@ export default {
           success: '#636F59',
           'success-subtle': '#E5E8E2',
           disabled: '#D7D5D5',
-          // Cooler hairline used on buttons, sidebar chrome, and nav
-          // (distinct from the warmer DEFAULT used on card borders).
           control: '#E8E5E0',
         },
 

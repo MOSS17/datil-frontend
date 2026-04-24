@@ -78,6 +78,43 @@ export function formatTimeShort(date: Date): string {
   return `${h}:${String(minutes).padStart(2, '0')} ${suffix}`;
 }
 
+// Returns the IANA timezone's UTC offset as a ±HH:MM string, sampled at noon
+// on the given YYYY-MM-DD to avoid DST-boundary ambiguity. Falls back to
+// the browser's local offset if the tz is missing or unparseable.
+function businessTzOffset(dateIso: string, timeZone: string | undefined): string {
+  if (!timeZone) {
+    const mins = -new Date(`${dateIso}T12:00:00`).getTimezoneOffset();
+    const sign = mins >= 0 ? '+' : '-';
+    const abs = Math.abs(mins);
+    return `${sign}${String(Math.floor(abs / 60)).padStart(2, '0')}:${String(abs % 60).padStart(2, '0')}`;
+  }
+  try {
+    const sample = new Date(`${dateIso}T12:00:00Z`);
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      timeZoneName: 'longOffset',
+    }).formatToParts(sample);
+    const raw = parts.find((p) => p.type === 'timeZoneName')?.value ?? '';
+    if (raw === 'GMT') return '+00:00';
+    const m = raw.match(/GMT([+-])(\d{2}):(\d{2})/);
+    return m ? `${m[1]}${m[2]}:${m[3]}` : '+00:00';
+  } catch {
+    return '+00:00';
+  }
+}
+
+// Combines a YYYY-MM-DD date and HH:MM wall-clock time into an RFC3339
+// string anchored in the business's timezone. The backend parses
+// appointment start_time in the business's IANA tz; this produces the
+// same instant they'd compute.
+export function toBusinessRfc3339(
+  date: string,
+  time: string,
+  timeZone: string | undefined,
+): string {
+  return `${date}T${time}:00${businessTzOffset(date, timeZone)}`;
+}
+
 export const TIME_OPTIONS: { value: string; label: string }[] = Array.from(
   { length: 24 * 4 },
   (_, i) => {

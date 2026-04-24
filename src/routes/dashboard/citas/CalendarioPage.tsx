@@ -12,8 +12,9 @@ import { WeekGrid, type RangeSelection } from './components/WeekGrid';
 import { DayView } from './components/DayView';
 import { NuevoBloqueDrawer } from './components/NuevoBloqueDrawer';
 import { CalendarioPageSkeleton } from './components/CalendarioPageSkeleton';
-import { addDays, formatIsoDate, isSameDay, startOfWeekMon } from './utils';
+import { addDays, formatIsoDate, isSameDay, startOfWeekMon, toBusinessRfc3339 } from './utils';
 import type { CitaFormValues, TiempoPersonalFormValues } from './schema';
+import { ApiError } from '@/api/client';
 
 export default function CalendarioPage() {
   const today = useMemo(() => new Date(), []);
@@ -25,6 +26,8 @@ export default function CalendarioPage() {
     start_time: string;
     end_time: string;
   } | null>(null);
+  const [citaError, setCitaError] = useState<string | null>(null);
+  const [tiempoError, setTiempoError] = useState<string | null>(null);
 
   const appointmentsQuery = useAppointments();
   const personalTimeQuery = usePersonalTime();
@@ -75,11 +78,15 @@ export default function CalendarioPage() {
   }, []);
   const openDrawer = useCallback(() => {
     setPrefill(null);
+    setCitaError(null);
+    setTiempoError(null);
     setDrawerOpen(true);
   }, []);
   const closeDrawer = useCallback(() => {
     setDrawerOpen(false);
     setPrefill(null);
+    setCitaError(null);
+    setTiempoError(null);
   }, []);
   const handleSelectRange = useCallback((range: RangeSelection) => {
     setPrefill({
@@ -87,30 +94,49 @@ export default function CalendarioPage() {
       start_time: range.startTime,
       end_time: range.endTime,
     });
+    setCitaError(null);
+    setTiempoError(null);
     setDrawerOpen(true);
   }, []);
 
   const handleCitaSubmit = async (values: CitaFormValues) => {
-    if (!businessQuery.data?.id) return;
-    await createAppointment.mutateAsync({
-      customer_name: values.customer_name,
-      customer_phone: `${values.country_code}${values.customer_phone}`,
-      start_time: `${values.date}T${values.start_time}:00`,
-      service_ids: values.service_ids,
-    });
-    closeDrawer();
+    setCitaError(null);
+    try {
+      await createAppointment.mutateAsync({
+        customer_name: values.customer_name,
+        customer_phone: `${values.country_code}${values.customer_phone}`,
+        start_time: toBusinessRfc3339(
+          values.date,
+          values.start_time,
+          businessQuery.data?.timezone,
+        ),
+        service_ids: values.service_ids,
+      });
+      closeDrawer();
+    } catch (err) {
+      setCitaError(
+        err instanceof ApiError && err.message ? err.message : 'No pudimos agendar la cita. Inténtalo de nuevo.',
+      );
+    }
   };
 
   const handleTiempoSubmit = async (values: TiempoPersonalFormValues) => {
-    await createPersonalTime.mutateAsync({
-      type: values.type,
-      date: values.date,
-      end_date: values.end_date,
-      start_time: values.start_time,
-      end_time: values.end_time,
-      reason: values.reason ?? '',
-    });
-    closeDrawer();
+    setTiempoError(null);
+    try {
+      await createPersonalTime.mutateAsync({
+        type: values.type,
+        date: values.date,
+        end_date: values.end_date,
+        start_time: values.start_time,
+        end_time: values.end_time,
+        reason: values.reason,
+      });
+      closeDrawer();
+    } catch (err) {
+      setTiempoError(
+        err instanceof ApiError && err.message ? err.message : 'No pudimos guardar el bloque. Inténtalo de nuevo.',
+      );
+    }
   };
 
   if (isLoading) return <CalendarioPageSkeleton />;
@@ -200,6 +226,8 @@ export default function CalendarioPage() {
         isSubmittingTiempo={createPersonalTime.isPending}
         onSubmitCita={handleCitaSubmit}
         onSubmitTiempo={handleTiempoSubmit}
+        citaConflictMessage={citaError}
+        tiempoInfoMessage={tiempoError}
       />
     </>
   );
