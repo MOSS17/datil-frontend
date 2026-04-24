@@ -1,8 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useBusinessBySlug } from '@/api/hooks/useBusiness';
-import { useCategories } from '@/api/hooks/useCategories';
-import { useServices } from '@/api/hooks/useServices';
+import { useBookingPage, useBookingServices } from '@/api/hooks/useBooking';
 import { Card } from '@/components/ui/Card';
 import { ErrorState } from '@/routes/dashboard/components/ErrorState';
 import type { Service } from '@/api/types/services';
@@ -23,30 +21,23 @@ export default function BusinessPage() {
   const navigate = useNavigate();
   const { selections, addSelection, countForService } = useBookingSelection();
 
-  const businessQuery = useBusinessBySlug(slug);
-  const categoriesQuery = useCategories();
-  const servicesQuery = useServices();
+  const pageQuery = useBookingPage(slug);
+  const servicesQuery = useBookingServices(slug);
+  const business = pageQuery.data?.business;
+  const categories = pageQuery.data?.categories;
 
   const [activeTab, setActiveTab] = useState<string>(ALL_TAB);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [sheetService, setSheetService] = useState<Service | null>(null);
 
   const serviceGroups = useMemo(
-    () =>
-      groupServicesByMainCategory(
-        servicesQuery.data ?? [],
-        categoriesQuery.data ?? [],
-      ),
-    [servicesQuery.data, categoriesQuery.data],
+    () => groupServicesByMainCategory(servicesQuery.data ?? [], categories ?? []),
+    [servicesQuery.data, categories],
   );
 
   const extraGroups = useMemo(
-    () =>
-      groupExtrasByCategory(
-        servicesQuery.data ?? [],
-        categoriesQuery.data ?? [],
-      ),
-    [servicesQuery.data, categoriesQuery.data],
+    () => groupExtrasByCategory(servicesQuery.data ?? [], categories ?? []),
+    [servicesQuery.data, categories],
   );
 
   const mainCategories = useMemo(
@@ -82,8 +73,8 @@ export default function BusinessPage() {
     navigate(`/${slug}/resumen`);
   };
 
-  const isLoading = businessQuery.isLoading || categoriesQuery.isLoading || servicesQuery.isLoading;
-  const queryError = businessQuery.error ?? categoriesQuery.error ?? servicesQuery.error;
+  const isLoading = pageQuery.isLoading || servicesQuery.isLoading;
+  const queryError = pageQuery.error ?? servicesQuery.error;
 
   if (isLoading) {
     return <BusinessPageSkeleton />;
@@ -96,8 +87,7 @@ export default function BusinessPage() {
           <ErrorState
             message="No se pudo cargar este negocio. Intenta de nuevo."
             onRetry={() => {
-              businessQuery.refetch();
-              categoriesQuery.refetch();
+              pageQuery.refetch();
               servicesQuery.refetch();
             }}
           />
@@ -106,7 +96,6 @@ export default function BusinessPage() {
     );
   }
 
-  const business = businessQuery.data;
   if (!business) return null;
 
   const selectionCount = selections.length;

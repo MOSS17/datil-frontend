@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Check, Copy, Info } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useBusinessBySlug } from '@/api/hooks/useBusiness';
-import { useServices } from '@/api/hooks/useServices';
+import { ApiError } from '@/api/client';
+import {
+  useBookingPage,
+  useBookingServices,
+  useReserveBooking,
+} from '@/api/hooks/useBooking';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ErrorState } from '@/routes/dashboard/components/ErrorState';
@@ -17,6 +21,7 @@ import {
 } from '../business/selection';
 import { DetailsSheet, type DetailsSelection } from '../schedule/components/DetailsSheet';
 import { DesktopReservationSummary } from '../datos/components/DesktopReservationSummary';
+import { readStoredInfo } from '../datos/schema';
 import {
   formatFullDateWithYear,
   formatShortDate,
@@ -32,19 +37,32 @@ import { UPLOAD_ERROR_MESSAGES, validatePaymentProof, type UploadError } from '.
 
 const COPY_TOAST_DURATION_MS = 2500;
 
+type ReserveError =
+  | { kind: 'slot-taken'; message: string }
+  | { kind: 'validation'; message: string }
+  | { kind: 'generic'; message: string };
+
 export default function ConfirmBookingPage() {
   const { slug = '' } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const { selections, scheduledDate, scheduledTime } = useBookingSelection();
+  const {
+    selections,
+    scheduledDate,
+    scheduledTime,
+    scheduledStart,
+    setReservedAppointment,
+  } = useBookingSelection();
 
-  const businessQuery = useBusinessBySlug(slug);
-  const servicesQuery = useServices();
+  const pageQuery = useBookingPage(slug);
+  const servicesQuery = useBookingServices(slug);
+  const business = pageQuery.data?.business;
+  const reserveMutation = useReserveBooking(slug);
 
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<UploadError | null>(null);
+  const [reserveError, setReserveError] = useState<ReserveError | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -115,8 +133,8 @@ export default function ConfirmBookingPage() {
   const shortDate = scheduledDate ? formatShortDate(scheduledDate) : undefined;
   const startTime = scheduledTime ? formatTimeLabel(scheduledTime) : undefined;
 
-  const isLoading = businessQuery.isLoading || servicesQuery.isLoading;
-  const queryError = businessQuery.error ?? servicesQuery.error;
+  const isLoading = pageQuery.isLoading || servicesQuery.isLoading;
+  const queryError = pageQuery.error ?? servicesQuery.error;
 
   useEffect(() => {
     if (isLoading) return;
@@ -124,10 +142,18 @@ export default function ConfirmBookingPage() {
       navigate(`/${slug}`, { replace: true });
       return;
     }
-    if (!scheduledDate || !scheduledTime) {
+    if (!scheduledDate || !scheduledTime || !scheduledStart) {
       navigate(`/${slug}/horario`, { replace: true });
     }
-  }, [isLoading, selections.length, scheduledDate, scheduledTime, slug, navigate]);
+  }, [
+    isLoading,
+    selections.length,
+    scheduledDate,
+    scheduledTime,
+    scheduledStart,
+    slug,
+    navigate,
+  ]);
 
   if (isLoading) {
     return <ConfirmBookingSkeleton />;
@@ -140,7 +166,7 @@ export default function ConfirmBookingPage() {
           <ErrorState
             message="No pudimos cargar tu reservación."
             onRetry={() => {
-              businessQuery.refetch();
+              pageQuery.refetch();
               servicesQuery.refetch();
             }}
           />
@@ -149,11 +175,15 @@ export default function ConfirmBookingPage() {
     );
   }
 
-  if (selections.length === 0 || !scheduledDate || !scheduledTime || !businessQuery.data) {
+  if (
+    selections.length === 0 ||
+    !scheduledDate ||
+    !scheduledTime ||
+    !scheduledStart ||
+    !business
+  ) {
     return <ConfirmBookingSkeleton />;
   }
-
-  const business = businessQuery.data;
 
   const handleCopy = async (value: string, label: string, gender: 'f' | 'm') => {
     try {
@@ -182,23 +212,65 @@ export default function ConfirmBookingPage() {
   };
 
   const handleSubmit = async () => {
-    const error = validatePaymentProof(file);
-    if (error) {
-      setUploadError(error);
+    if (file) {
+      const error = validatePaymentProof(file);
+      if (error) {
+        setUploadError(error);
+        return;
+      }
+    }
+    setReserveError(null);
+
+    const info = readStoredInfo(slug);
+    const firstName = info.firstName?.trim() ?? '';
+    const lastName = info.lastName?.trim() ?? '';
+    const phoneDigits = info.phone?.trim() ?? '';
+    if (!firstName || !lastName || !phoneDigits) {
+      navigate(`/${slug}/datos`, { replace: true });
       return;
     }
-    setIsSubmitting(true);
+
+    const serviceIds = selections.map((s) => s.serviceId);
+    const extraIds = selections.flatMap((s) => s.extraIds);
+
     try {
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      const appointment = await reserveMutation.mutateAsync({
+        customerName: `${firstName} ${lastName}`,
+        customerPhone: `+52${phoneDigits}`,
+        startTime: scheduledStart,
+        serviceIds,
+        extraIds,
+        paymentProof: file ?? undefined,
+      });
+      setReservedAppointment(appointment);
       navigate(`/${slug}/confirmada`);
-    } finally {
-      setIsSubmitting(false);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 409) {
+          setReserveError({ kind: 'slot-taken', message: err.message });
+          return;
+        }
+        if (err.status === 400 && err.errors) {
+          setReserveError({
+            kind: 'validation',
+            message: 'Revisa tus datos e inténtalo de nuevo.',
+          });
+          return;
+        }
+        setReserveError({ kind: 'generic', message: err.message });
+        return;
+      }
+      setReserveError({
+        kind: 'generic',
+        message: 'No pudimos procesar tu reserva. Inténtalo de nuevo.',
+      });
     }
   };
 
   const handleBack = () => navigate(`/${slug}/datos`);
 
   const uploadErrorMessage = uploadError ? UPLOAD_ERROR_MESSAGES[uploadError] : null;
+  const isSubmitting = reserveMutation.isPending;
   const remainingLabel =
     totals.remaining > 0
       ? `El resto del pago ( ${formatPrice(totals.remaining)} ) se cobrará el día de la cita.`
@@ -207,6 +279,32 @@ export default function ConfirmBookingPage() {
     totals.remaining > 0
       ? `* El resto del pago ( ${formatPrice(totals.remaining)} MXN ) se cobrará el día de la cita.`
       : '* El resto del pago se cobrará el día de la cita.';
+
+  const reserveErrorBanner = reserveError ? (
+    <div className="flex flex-col gap-300 rounded-md border border-danger bg-surface-danger-subtle px-400 py-300">
+      <p className="font-sans text-body-sm font-medium text-danger">
+        {reserveError.message}
+      </p>
+      {reserveError.kind === 'slot-taken' ? (
+        <button
+          type="button"
+          onClick={() => navigate(`/${slug}/horario`)}
+          className="self-start font-sans text-body-sm font-medium text-primary hover:text-primary-hover focus:outline-none focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-border-primary focus-visible:ring-offset-2"
+        >
+          Elegir otro horario
+        </button>
+      ) : null}
+      {reserveError.kind === 'validation' ? (
+        <button
+          type="button"
+          onClick={() => navigate(`/${slug}/datos`)}
+          className="self-start font-sans text-body-sm font-medium text-primary hover:text-primary-hover focus:outline-none focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-border-primary focus-visible:ring-offset-2"
+        >
+          Regresar a tus datos
+        </button>
+      ) : null}
+    </div>
+  ) : null;
 
   return (
     <div className="flex flex-col">
@@ -293,7 +391,7 @@ export default function ConfirmBookingPage() {
                   Comprobante de Pago
                 </p>
                 <p className="font-sans text-caption text-muted">
-                  Sube el comprobante de pago (JPG, PNG o PDF)
+                  Sube el comprobante de pago (JPG, PNG, WebP o PDF)
                 </p>
                 <PaymentProofUploader
                   variant="desktop"
@@ -340,7 +438,7 @@ export default function ConfirmBookingPage() {
               <div className="flex flex-col gap-300">
                 <h2 className="font-serif text-h5 text-heading">Comprobante de Pago</h2>
                 <p className="font-sans text-body text-muted">
-                  Sube el comprobante de pago del anticipo (JPG, PNG o PDF)
+                  Sube el comprobante de pago del anticipo (JPG, PNG, WebP o PDF)
                 </p>
                 <PaymentProofUploader
                   variant="mobile"
@@ -361,6 +459,8 @@ export default function ConfirmBookingPage() {
               />
             </div>
 
+            {reserveErrorBanner}
+
             <div className="hidden md:flex md:items-center md:justify-end">
               <Button
                 type="button"
@@ -376,6 +476,7 @@ export default function ConfirmBookingPage() {
 
         <div className="flex flex-col gap-500 border-t border-subtle px-600 pb-1100 pt-600 md:hidden">
           <p className="font-sans text-body text-muted">{mobileRemainingLabel}</p>
+          {reserveErrorBanner}
           <Button
             type="button"
             size="lg"

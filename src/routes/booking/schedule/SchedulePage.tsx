@@ -1,12 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useBusinessBySlug } from '@/api/hooks/useBusiness';
-import { useCategories } from '@/api/hooks/useCategories';
-import { useServices } from '@/api/hooks/useServices';
+import {
+  useBookingAvailability,
+  useBookingPage,
+  useBookingServices,
+} from '@/api/hooks/useBooking';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ErrorState } from '@/routes/dashboard/components/ErrorState';
 import type { Service } from '@/api/types/services';
+import type { TimeSlot } from '@/api/types/booking';
 import { useBookingSelection } from '../useBookingSelection';
 import { BookingStepper } from '../components/BookingStepper';
 import {
@@ -21,7 +24,7 @@ import { SelectionSummaryBar } from './components/SelectionSummaryBar';
 import { MobileSummaryCard } from './components/MobileSummaryCard';
 import { DetailsSheet, type DetailsSelection } from './components/DetailsSheet';
 import { ScheduleSkeleton } from './ScheduleSkeleton';
-import { DEFAULT_TIME_SLOTS, formatFullDate } from './scheduleUtils';
+import { extractHhmmFromRfc3339, formatFullDate } from './scheduleUtils';
 
 export default function SchedulePage() {
   const { slug = '' } = useParams<{ slug: string }>();
@@ -30,13 +33,13 @@ export default function SchedulePage() {
     selections,
     clearSelections,
     scheduledDate,
-    scheduledTime,
+    scheduledStart,
     setSchedule,
   } = useBookingSelection();
 
-  const businessQuery = useBusinessBySlug(slug);
-  const servicesQuery = useServices();
-  const categoriesQuery = useCategories();
+  const pageQuery = useBookingPage(slug);
+  const servicesQuery = useBookingServices(slug);
+  const business = pageQuery.data?.business;
 
   const initialDate = scheduledDate ? new Date(scheduledDate) : new Date();
   const [visibleYear, setVisibleYear] = useState(initialDate.getFullYear());
@@ -46,6 +49,17 @@ export default function SchedulePage() {
   const servicesById = useMemo(
     () => buildServicesMap(servicesQuery.data ?? []),
     [servicesQuery.data],
+  );
+
+  const availabilityServiceIds = useMemo(
+    () => selections.flatMap((sel) => [sel.serviceId, ...sel.extraIds]),
+    [selections],
+  );
+
+  const availabilityQuery = useBookingAvailability(
+    slug,
+    scheduledDate,
+    availabilityServiceIds,
   );
 
   const resolvedSelections = useMemo<DetailsSelection[]>(
@@ -84,9 +98,8 @@ export default function SchedulePage() {
     [resolvedSelections],
   );
 
-  const isLoading =
-    businessQuery.isLoading || servicesQuery.isLoading || categoriesQuery.isLoading;
-  const queryError = businessQuery.error ?? servicesQuery.error ?? categoriesQuery.error;
+  const isLoading = pageQuery.isLoading || servicesQuery.isLoading;
+  const queryError = pageQuery.error ?? servicesQuery.error;
 
   if (isLoading) {
     return <ScheduleSkeleton />;
@@ -99,9 +112,8 @@ export default function SchedulePage() {
           <ErrorState
             message="No pudimos cargar la disponibilidad."
             onRetry={() => {
-              businessQuery.refetch();
+              pageQuery.refetch();
               servicesQuery.refetch();
-              categoriesQuery.refetch();
             }}
           />
         </Card>
@@ -134,11 +146,11 @@ export default function SchedulePage() {
   };
 
   const handleSelectDate = (iso: string) => {
-    setSchedule(iso, null);
+    setSchedule(iso, null, null);
   };
 
-  const handleSelectTime = (hhmm: string) => {
-    setSchedule(scheduledDate, hhmm);
+  const handleSelectTime = (slot: TimeSlot) => {
+    setSchedule(scheduledDate, extractHhmmFromRfc3339(slot.start), slot.start);
   };
 
   const handleCancel = () => {
@@ -150,7 +162,11 @@ export default function SchedulePage() {
     navigate(`/${slug}/datos`);
   };
 
-  const canContinue = Boolean(scheduledDate && scheduledTime);
+  const canContinue = Boolean(scheduledDate && scheduledStart);
+  const slots = availabilityQuery.data ?? [];
+  const availabilityLoading = availabilityQuery.isFetching;
+  const showNoSlots =
+    Boolean(scheduledDate) && !availabilityLoading && slots.length === 0;
 
   return (
     <div className="flex flex-col">
@@ -195,14 +211,18 @@ export default function SchedulePage() {
                 </p>
               ) : null}
             </div>
-            {scheduledDate ? (
+            {!scheduledDate ? (
+              <EmptyTimeSlots variant="no-date" />
+            ) : availabilityLoading ? (
+              <p className="font-sans text-body-sm text-muted">Cargando horarios…</p>
+            ) : showNoSlots ? (
+              <EmptyTimeSlots variant="no-slots" />
+            ) : (
               <TimeSlotList
-                slots={DEFAULT_TIME_SLOTS}
-                selected={scheduledTime}
+                slots={slots}
+                selected={scheduledStart}
                 onSelect={handleSelectTime}
               />
-            ) : (
-              <EmptyTimeSlots />
             )}
           </div>
         </div>
@@ -238,7 +258,7 @@ export default function SchedulePage() {
         open={detailsOpen}
         onClose={() => setDetailsOpen(false)}
         selections={resolvedSelections}
-        location={businessQuery.data?.location}
+        location={business?.location}
         totalDuration={totals.duration}
         totalPrice={totals.price}
       />

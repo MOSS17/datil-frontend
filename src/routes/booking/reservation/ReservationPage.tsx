@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useCategories } from '@/api/hooks/useCategories';
-import { useServices } from '@/api/hooks/useServices';
+import { useBookingPage, useBookingServices } from '@/api/hooks/useBooking';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ErrorState } from '@/routes/dashboard/components/ErrorState';
@@ -24,8 +23,9 @@ export default function ReservationPage() {
   const navigate = useNavigate();
   const { selections, removeSelection, updateSelection } = useBookingSelection();
 
-  const categoriesQuery = useCategories();
-  const servicesQuery = useServices();
+  const pageQuery = useBookingPage(slug);
+  const servicesQuery = useBookingServices(slug);
+  const categories = pageQuery.data?.categories;
 
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -35,12 +35,8 @@ export default function ReservationPage() {
   );
 
   const extraGroups = useMemo(
-    () =>
-      groupExtrasByCategory(
-        servicesQuery.data ?? [],
-        categoriesQuery.data ?? [],
-      ),
-    [servicesQuery.data, categoriesQuery.data],
+    () => groupExtrasByCategory(servicesQuery.data ?? [], categories ?? []),
+    [servicesQuery.data, categories],
   );
 
   const totals = useMemo(() => {
@@ -60,8 +56,8 @@ export default function ReservationPage() {
     ? servicesById.get(editingSelection.serviceId) ?? null
     : null;
 
-  const isLoading = categoriesQuery.isLoading || servicesQuery.isLoading;
-  const queryError = categoriesQuery.error ?? servicesQuery.error;
+  const isLoading = pageQuery.isLoading || servicesQuery.isLoading;
+  const queryError = pageQuery.error ?? servicesQuery.error;
 
   if (isLoading) {
     return <ReservationSkeleton />;
@@ -74,7 +70,7 @@ export default function ReservationPage() {
           <ErrorState
             message="No pudimos cargar tu reservación."
             onRetry={() => {
-              categoriesQuery.refetch();
+              pageQuery.refetch();
               servicesQuery.refetch();
             }}
           />

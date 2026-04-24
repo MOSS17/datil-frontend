@@ -3,11 +3,9 @@
 import { getToken } from '@/auth/token';
 import {
   mockAppointments,
-  mockBusiness,
   mockCalendarIntegrations,
   mockCategories,
   mockPersonalTime,
-  mockServices,
   mockWorkdays,
 } from './data';
 
@@ -26,11 +24,13 @@ const AUTHED_REAL: RegExp[] = [
   /^\/categories(\/.*)?$/,
 ];
 
-// Endpoints that always go real, even without a token (signup/login).
+// Endpoints that always go real, even without a token (signup/login, public
+// booking flow under /book/{slug}/*).
 const ALWAYS_REAL: RegExp[] = [
   /^\/auth\/login$/,
   /^\/auth\/signup$/,
   /^\/auth\/refresh$/,
+  /^\/book\/[^/]+(\/.*)?$/,
 ];
 
 function delay<T>(value: T): Promise<T> {
@@ -60,19 +60,6 @@ function nowId(prefix: string) {
 }
 
 const HANDLERS: MockHandler[] = [
-  // ── Business (public booking-flow fallbacks) ────────────────────────────
-  // Real backend doesn't serve by slug yet, so booking stays mocked.
-  {
-    method: 'GET',
-    pattern: /^\/business\/slug\/([^/]+)$/,
-    handler: (_ctx, [slug]) => ({ ...mockBusiness, url: slug }),
-  },
-  {
-    method: 'GET',
-    pattern: /^\/business\/([^/]+)$/,
-    handler: (_ctx, [id]) => ({ ...mockBusiness, id }),
-  },
-
   // ── Categories ──────────────────────────────────────────────────────────
   { method: 'GET', pattern: /^\/categories$/, handler: () => mockCategories },
   {
@@ -104,23 +91,6 @@ const HANDLERS: MockHandler[] = [
     method: 'DELETE',
     pattern: /^\/categories\/([^/]+)$/,
     handler: () => undefined,
-  },
-
-  // ── Services (booking-flow fallback: public, no token) ─────────────────
-  {
-    method: 'GET',
-    pattern: /^\/services$/,
-    handler: ({ query }) => {
-      const categoryId = query.get('category_id');
-      return categoryId
-        ? mockServices.filter((s) => s.category_id === categoryId)
-        : mockServices;
-    },
-  },
-  {
-    method: 'GET',
-    pattern: /^\/services\/([^/]+)$/,
-    handler: (_ctx, [id]) => mockServices.find((s) => s.id === id) ?? mockServices[0],
   },
 
   // ── Appointments ────────────────────────────────────────────────────────

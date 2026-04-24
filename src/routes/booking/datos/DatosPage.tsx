@@ -3,8 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useBusinessBySlug } from '@/api/hooks/useBusiness';
-import { useServices } from '@/api/hooks/useServices';
+import { useBookingPage, useBookingServices } from '@/api/hooks/useBooking';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -43,8 +42,9 @@ export default function DatosPage() {
   const navigate = useNavigate();
   const { selections, scheduledDate, scheduledTime } = useBookingSelection();
 
-  const businessQuery = useBusinessBySlug(slug);
-  const servicesQuery = useServices();
+  const pageQuery = useBookingPage(slug);
+  const servicesQuery = useBookingServices(slug);
+  const business = pageQuery.data?.business;
 
   const [detailsOpen, setDetailsOpen] = useState(false);
 
@@ -113,8 +113,8 @@ export default function DatosPage() {
   const shortDate = scheduledDate ? formatShortDate(scheduledDate) : undefined;
   const startTime = scheduledTime ? formatTimeLabel(scheduledTime) : undefined;
 
-  const isLoading = businessQuery.isLoading || servicesQuery.isLoading;
-  const queryError = businessQuery.error ?? servicesQuery.error;
+  const isLoading = pageQuery.isLoading || servicesQuery.isLoading;
+  const queryError = pageQuery.error ?? servicesQuery.error;
 
   useEffect(() => {
     if (isLoading) return;
@@ -138,7 +138,7 @@ export default function DatosPage() {
           <ErrorState
             message="No pudimos cargar tu información."
             onRetry={() => {
-              businessQuery.refetch();
+              pageQuery.refetch();
               servicesQuery.refetch();
             }}
           />
@@ -186,7 +186,7 @@ export default function DatosPage() {
               selections={resolvedSelections}
               dateLine={dateLine}
               timeLine={timeLine}
-              location={businessQuery.data?.location}
+              location={business?.location}
               totalPrice={totals.price}
             />
           </aside>
@@ -275,7 +275,7 @@ export default function DatosPage() {
         open={detailsOpen}
         onClose={() => setDetailsOpen(false)}
         selections={resolvedSelections}
-        location={businessQuery.data?.location}
+        location={business?.location}
         totalDuration={totals.duration}
         totalPrice={totals.price}
         dateLine={dateLine}

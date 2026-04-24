@@ -131,16 +131,13 @@ export function formatTimeRange(startHhmm: string, durationMinutes: number): str
   return `${formatTimeLabel(startHhmm)} – ${formatTimeLabel(endHhmm)}`;
 }
 
-// Placeholder available time slots until the real availability endpoint ships.
-export const DEFAULT_TIME_SLOTS = [
-  '09:00',
-  '10:00',
-  '11:00',
-  '13:00',
-  '14:00',
-  '15:00',
-  '16:00',
-] as const;
+// Backend returns availability slots as RFC3339 with the business-local offset
+// baked in (e.g. "2026-04-25T10:00:00-07:00"). The HH:MM portion is the
+// authoritative display value — do NOT re-parse through Date, which would
+// re-timezone it to the browser's local offset.
+export function extractHhmmFromRfc3339(iso: string): string {
+  return iso.slice(11, 16);
+}
 
 export function formatTimeLabel(hhmm: string): string {
   const [h, m] = hhmm.split(':').map(Number);
