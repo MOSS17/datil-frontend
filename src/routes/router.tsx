@@ -8,6 +8,7 @@ const ForgotPasswordPage = lazy(() => import('./auth/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./auth/ResetPasswordPage'));
 const RegisterPage = lazy(() => import('./auth/RegisterPage'));
 const VerifyEmailPage = lazy(() => import('./auth/registro/VerifyEmailPage'));
+const CalendarCallbackRedirect = lazy(() => import('./CalendarCallbackRedirect'));
 
 const DashboardLayout = lazy(() => import('./dashboard/DashboardLayout'));
 const HomePage = lazy(() => import('./dashboard/home/HomePage'));
@@ -80,6 +81,14 @@ export const router = createBrowserRouter([
     element: (
       <SuspenseWrapper>
         <VerifyEmailPage />
+      </SuspenseWrapper>
+    ),
+  },
+  {
+    path: '/calendar',
+    element: (
+      <SuspenseWrapper>
+        <CalendarCallbackRedirect />
       </SuspenseWrapper>
     ),
   },

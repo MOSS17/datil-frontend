@@ -1,33 +1,38 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { ENDPOINTS } from '@/api/endpoints';
-import type { CalendarIntegration } from '@/api/types/calendar';
+import type {
+  AppleConnectRequest,
+  CalendarIntegration,
+  GoogleAuthorizeResponse,
+} from '@/api/types/calendar';
+import type { CalendarProvider } from '@/lib/constants';
 
-export const calendarKeys = {
-  all: ['calendar-integrations'] as const,
-};
-
-export function useCalendarIntegrations() {
-  return useQuery({
-    queryKey: calendarKeys.all,
-    queryFn: () => apiClient<CalendarIntegration[]>(ENDPOINTS.CALENDAR),
+export function useConnectGoogle() {
+  return useMutation({
+    mutationFn: () =>
+      apiClient<GoogleAuthorizeResponse>(ENDPOINTS.CALENDAR.GOOGLE_CONNECT, {
+        method: 'POST',
+      }),
+    onSuccess: (res) => {
+      window.location.assign(res.authorize_url);
+    },
   });
 }
 
-export function useConnectCalendar() {
-  const queryClient = useQueryClient();
+export function useConnectApple() {
   return useMutation({
-    mutationFn: (provider: string) =>
-      apiClient<CalendarIntegration>(ENDPOINTS.CALENDAR, { method: 'POST', body: { provider } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: calendarKeys.all }),
+    mutationFn: (body: AppleConnectRequest) =>
+      apiClient<CalendarIntegration>(ENDPOINTS.CALENDAR.APPLE_CONNECT, {
+        method: 'POST',
+        body,
+      }),
   });
 }
 
 export function useDisconnectCalendar() {
-  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      apiClient<void>(`${ENDPOINTS.CALENDAR}/${id}`, { method: 'DELETE' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: calendarKeys.all }),
+    mutationFn: (provider: CalendarProvider) =>
+      apiClient<void>(ENDPOINTS.CALENDAR.disconnect(provider), { method: 'DELETE' }),
   });
 }

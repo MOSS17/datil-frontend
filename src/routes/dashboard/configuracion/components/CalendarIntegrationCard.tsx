@@ -1,3 +1,5 @@
+import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Apple,
   Calendar as CalendarIcon,
@@ -7,14 +9,15 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { Toast, type ToastVariant } from '@/components/ui/Toast';
 import {
-  useCalendarIntegrations,
-  useConnectCalendar,
+  useConnectGoogle,
   useDisconnectCalendar,
 } from '@/api/hooks/useCalendar';
+import { ApiError } from '@/api/client';
 import { CALENDAR_PROVIDER, type CalendarProvider } from '@/lib/constants';
 import type { CalendarIntegration } from '@/api/types/calendar';
+import { AppleConnectDrawer } from './AppleConnectDrawer';
 
 interface ProviderMeta {
   provider: CalendarProvider;
@@ -41,25 +44,72 @@ const PROVIDERS: ProviderMeta[] = [
   },
 ];
 
+interface ConnectionState {
+  account_email?: string;
+}
+
+const STORAGE_PREFIX = 'datil:calendar:';
+
+function readConnection(provider: CalendarProvider): ConnectionState | null {
+  try {
+    const raw = window.localStorage.getItem(`${STORAGE_PREFIX}${provider}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as ConnectionState;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return null;
+  }
+}
+
+function writeConnection(provider: CalendarProvider, state: ConnectionState) {
+  window.localStorage.setItem(`${STORAGE_PREFIX}${provider}`, JSON.stringify(state));
+}
+
+function clearConnection(provider: CalendarProvider) {
+  window.localStorage.removeItem(`${STORAGE_PREFIX}${provider}`);
+}
+
+const PROVIDER_LABEL: Record<CalendarProvider, string> = {
+  google: 'Google',
+  apple: 'Apple',
+};
+
+const ERROR_COPY: Record<string, string> = {
+  access_denied: 'Cancelaste la conexión.',
+  invalid_state: 'La sesión de autorización expiró. Inténtalo de nuevo.',
+  invalid_grant: 'No pudimos completar la autorización. Inténtalo de nuevo.',
+  exchange_failed: 'No pudimos completar la autorización. Inténtalo de nuevo.',
+  not_configured: 'Google Calendar no está configurado en este servidor.',
+};
+
+function errorMessage(code: string, provider: string | null): string {
+  const friendly = ERROR_COPY[code];
+  if (friendly) return friendly;
+  const name = provider && PROVIDER_LABEL[provider as CalendarProvider];
+  return name
+    ? `No pudimos conectar ${name} Calendar. Inténtalo de nuevo.`
+    : 'No pudimos completar la conexión. Inténtalo de nuevo.';
+}
+
 interface ProviderRowProps {
   meta: ProviderMeta;
-  integration: CalendarIntegration | undefined;
+  connection: ConnectionState | null;
   onConnect: (provider: CalendarProvider) => void;
-  onDisconnect: (id: string) => void;
+  onDisconnect: (provider: CalendarProvider) => void;
   isPending: boolean;
 }
 
 function ProviderRow({
   meta,
-  integration,
+  connection,
   onConnect,
   onDisconnect,
   isPending,
 }: ProviderRowProps) {
   const { label, Icon, iconClass, tileClass, provider } = meta;
-  const isConnected = Boolean(integration);
+  const isConnected = connection !== null;
   const subtitle = isConnected
-    ? (integration?.account_email ?? 'Conectado')
+    ? (connection?.account_email ?? 'Conectado')
     : 'No Conectado';
 
   return (
@@ -99,9 +149,7 @@ function ProviderRow({
           )
         }
         isLoading={isPending}
-        onClick={() =>
-          isConnected && integration ? onDisconnect(integration.id) : onConnect(provider)
-        }
+        onClick={() => (isConnected ? onDisconnect(provider) : onConnect(provider))}
       >
         {isConnected ? 'Desconectar' : 'Conectar'}
       </Button>
@@ -110,60 +158,166 @@ function ProviderRow({
 }
 
 export function CalendarIntegrationCard() {
-  const { data, isLoading, error, refetch } = useCalendarIntegrations();
-  const connect = useConnectCalendar();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [google, setGoogle] = useState<ConnectionState | null>(() =>
+    readConnection(CALENDAR_PROVIDER.GOOGLE),
+  );
+  const [apple, setApple] = useState<ConnectionState | null>(() =>
+    readConnection(CALENDAR_PROVIDER.APPLE),
+  );
+  const [appleDrawerOpen, setAppleDrawerOpen] = useState(false);
+  const [toast, setToast] = useState<{ message: string; variant: ToastVariant } | null>(null);
+  const [pendingProvider, setPendingProvider] = useState<CalendarProvider | null>(null);
+
+  const connectGoogle = useConnectGoogle();
   const disconnect = useDisconnectCalendar();
 
-  return (
-    <Card>
-      <div className="flex flex-col gap-600">
-        <div className="flex flex-col gap-100">
-          <h2 className="font-serif text-h6 text-heading">Integración de Calendario</h2>
-          <p className="font-sans text-body-sm text-muted">
-            Sincroniza tus reservas con calendarios externos.
-          </p>
-        </div>
+  const setConnected = useCallback(
+    (provider: CalendarProvider, state: ConnectionState) => {
+      writeConnection(provider, state);
+      if (provider === CALENDAR_PROVIDER.GOOGLE) setGoogle(state);
+      else setApple(state);
+    },
+    [],
+  );
 
-        {isLoading ? (
-          <div className="flex flex-col gap-600">
-            <Skeleton className="h-1100" />
-            <Skeleton className="h-1100" />
-          </div>
-        ) : error ? (
-          <div className="flex flex-col items-start gap-300">
-            <p className="font-sans text-body-sm text-error">
-              No se pudieron cargar las integraciones.
+  const setDisconnected = useCallback((provider: CalendarProvider) => {
+    clearConnection(provider);
+    if (provider === CALENDAR_PROVIDER.GOOGLE) setGoogle(null);
+    else setApple(null);
+  }, []);
+
+  // Handle the OAuth callback's ?connected / ?error query params on mount.
+  useEffect(() => {
+    const connected = searchParams.get('connected');
+    const errorCode = searchParams.get('error');
+    const provider = searchParams.get('provider');
+    if (!connected && !errorCode) return;
+
+    if (connected === CALENDAR_PROVIDER.GOOGLE || connected === CALENDAR_PROVIDER.APPLE) {
+      setConnected(connected, readConnection(connected) ?? {});
+      setToast({
+        message: `${PROVIDER_LABEL[connected]} Calendar conectado`,
+        variant: 'success',
+      });
+    } else if (errorCode) {
+      setToast({ message: errorMessage(errorCode, provider), variant: 'error' });
+    }
+
+    const next = new URLSearchParams(searchParams);
+    next.delete('connected');
+    next.delete('error');
+    next.delete('provider');
+    setSearchParams(next, { replace: true });
+    // Only fire on first mount; subsequent setSearchParams updates would loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleConnect = (provider: CalendarProvider) => {
+    if (provider === CALENDAR_PROVIDER.APPLE) {
+      setAppleDrawerOpen(true);
+      return;
+    }
+    setPendingProvider(provider);
+    connectGoogle.mutate(undefined, {
+      onError: (err) => {
+        setPendingProvider(null);
+        const msg =
+          err instanceof ApiError && err.status === 503
+            ? 'Google Calendar no está configurado en este servidor.'
+            : err instanceof ApiError && err.message
+              ? err.message
+              : 'No pudimos iniciar la conexión con Google. Inténtalo de nuevo.';
+        setToast({ message: msg, variant: 'error' });
+      },
+      // onSuccess: the hook itself does window.location.assign, so we never
+      // unmount cleanly; no need to clear pendingProvider here.
+    });
+  };
+
+  const handleDisconnect = (provider: CalendarProvider) => {
+    setPendingProvider(provider);
+    disconnect.mutate(provider, {
+      onSuccess: () => {
+        setPendingProvider(null);
+        setDisconnected(provider);
+        setToast({
+          message: `${PROVIDER_LABEL[provider]} Calendar desconectado`,
+          variant: 'success',
+        });
+      },
+      onError: (err) => {
+        setPendingProvider(null);
+        // 404 = backend says it wasn't connected; treat as already-disconnected.
+        if (err instanceof ApiError && err.status === 404) {
+          setDisconnected(provider);
+          setToast({
+            message: `${PROVIDER_LABEL[provider]} Calendar desconectado`,
+            variant: 'success',
+          });
+          return;
+        }
+        const msg =
+          err instanceof ApiError && err.message
+            ? err.message
+            : 'No pudimos desconectar la cuenta. Inténtalo de nuevo.';
+        setToast({ message: msg, variant: 'error' });
+      },
+    });
+  };
+
+  const handleAppleSuccess = (integration: CalendarIntegration) => {
+    setAppleDrawerOpen(false);
+    setConnected(CALENDAR_PROVIDER.APPLE, {
+      account_email: integration.account_email,
+    });
+    setToast({ message: 'Apple Calendar conectado', variant: 'success' });
+  };
+
+  return (
+    <>
+      <Card>
+        <div className="flex flex-col gap-600">
+          <div className="flex flex-col gap-100">
+            <h2 className="font-serif text-h6 text-heading">Integración de Calendario</h2>
+            <p className="font-sans text-body-sm text-muted">
+              Sincroniza tus reservas con calendarios externos.
             </p>
-            <Button variant="secondary" size="sm" onClick={() => refetch()}>
-              Reintentar
-            </Button>
           </div>
-        ) : (
+
           <div className="flex flex-col gap-600">
             {PROVIDERS.map((meta, index) => {
-              const integration = data?.find((item) => item.provider === meta.provider);
-              const pendingThisRow =
-                (connect.isPending && connect.variables === meta.provider) ||
-                (disconnect.isPending &&
-                  integration !== undefined &&
-                  disconnect.variables === integration.id);
-
+              const connection =
+                meta.provider === CALENDAR_PROVIDER.GOOGLE ? google : apple;
               return (
                 <div key={meta.provider} className="flex flex-col gap-600">
                   {index > 0 && <hr className="border-t border-subtle" aria-hidden />}
                   <ProviderRow
                     meta={meta}
-                    integration={integration}
-                    onConnect={(provider) => connect.mutate(provider)}
-                    onDisconnect={(id) => disconnect.mutate(id)}
-                    isPending={pendingThisRow}
+                    connection={connection}
+                    onConnect={handleConnect}
+                    onDisconnect={handleDisconnect}
+                    isPending={pendingProvider === meta.provider}
                   />
                 </div>
               );
             })}
           </div>
-        )}
-      </div>
-    </Card>
+        </div>
+      </Card>
+
+      <AppleConnectDrawer
+        open={appleDrawerOpen}
+        onClose={() => setAppleDrawerOpen(false)}
+        onSuccess={handleAppleSuccess}
+      />
+
+      <Toast
+        open={Boolean(toast)}
+        message={toast?.message ?? ''}
+        variant={toast?.variant ?? 'success'}
+        onClose={() => setToast(null)}
+      />
+    </>
   );
 }

@@ -21,7 +21,11 @@ export const ENDPOINTS = {
     WORKDAYS: '/schedule/workdays',
     PERSONAL_TIME: '/schedule/personal-time',
   },
-  CALENDAR: '/calendar/integrations',
+  CALENDAR: {
+    GOOGLE_CONNECT: '/calendar/google/connect',
+    APPLE_CONNECT: '/calendar/apple/connect',
+    disconnect: (provider: 'google' | 'apple') => `/calendar/${provider}`,
+  },
   BOOK: (slug: string) => ({
     page: `/book/${slug}`,
     services: `/book/${slug}/services`,

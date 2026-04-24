@@ -7,3 +7,12 @@ export interface CalendarIntegration {
   account_email?: string;
   connected_at: string;
 }
+
+export interface GoogleAuthorizeResponse {
+  authorize_url: string;
+}
+
+export interface AppleConnectRequest {
+  email: string;
+  app_password: string;
+}
