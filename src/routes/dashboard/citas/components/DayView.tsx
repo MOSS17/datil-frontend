@@ -36,16 +36,6 @@ function minutesToHHMM(startHour: number, minutesSinceStart: number): string {
   return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
 }
 
-function getScrollParent(node: HTMLElement): HTMLElement | null {
-  let el: HTMLElement | null = node.parentElement;
-  while (el) {
-    const { overflowY } = getComputedStyle(el);
-    if (overflowY === 'auto' || overflowY === 'scroll') return el;
-    el = el.parentElement;
-  }
-  return null;
-}
-
 export function DayView({
   weekStart,
   selectedDay,
@@ -73,7 +63,7 @@ export function DayView({
   const minutesSinceStart = (d: Date) => (d.getHours() - startHour) * 60 + d.getMinutes();
 
   const colRef = useRef<HTMLDivElement | null>(null);
-  const gridRef = useRef<HTMLDivElement | null>(null);
+  const dayPickerRef = useRef<HTMLDivElement | null>(null);
 
   // Current time tick, refreshed once a minute so the "now" indicator
   // moves down as real time advances.
@@ -192,40 +182,26 @@ export function DayView({
     );
   });
 
-  // Scroll the nearest scrollable ancestor on mount / day change. The
-  // dashboard's <main> element owns the scroll (h-screen + overflow-y-auto),
-  // so the document body is not scrollable — we must find and scroll the
-  // actual scroll container. If today is selected, the current time is
-  // vertically centered; otherwise the day's first business hour sits near
-  // the top.
+  // Center today's pill in the horizontal day picker on mount (or when the
+  // week changes to one that contains today). Useful on narrow screens
+  // where the 7 pills overflow and today may be off-screen.
   useLayoutEffect(() => {
-    const el = gridRef.current;
-    if (!el || el.getBoundingClientRect().height === 0) return;
-    const scroller = getScrollParent(el);
-    if (!scroller) return;
-    const gridRect = el.getBoundingClientRect();
-    const scrollerRect = scroller.getBoundingClientRect();
-    const gridTopInScroller =
-      scroller.scrollTop + (gridRect.top - scrollerRect.top);
-    if (today && isSameDay(selectedDay, today)) {
-      const nowMin = today.getHours() * 60 + today.getMinutes();
-      const targetY = gridTopInScroller + nowMin * pxPerMinute;
-      scroller.scrollTo({
-        top: Math.max(0, targetY - scroller.clientHeight / 2),
-        behavior: 'auto',
-      });
-      return;
-    }
-    let targetMinutes: number;
-    if (offHours.length === 0 || offHours[0][0] > 0) targetMinutes = 0;
-    else targetMinutes = Math.max(0, offHours[0][1] - 60);
-    const targetY = gridTopInScroller + targetMinutes * pxPerMinute;
-    scroller.scrollTo({ top: Math.max(0, targetY - 80), behavior: 'auto' });
-  }, [selectedDay, offHours, pxPerMinute, today]);
+    const picker = dayPickerRef.current;
+    if (!picker || !today) return;
+    const idx = days.findIndex((d) => isSameDay(d, today));
+    if (idx === -1) return;
+    const btn = picker.children[idx] as HTMLElement | undefined;
+    if (!btn) return;
+    const target = btn.offsetLeft + btn.offsetWidth / 2 - picker.clientWidth / 2;
+    picker.scrollTo({ left: Math.max(0, target), behavior: 'auto' });
+  }, [today, days]);
 
   return (
     <div className="flex flex-col gap-400">
-      <div className="flex items-stretch gap-200 overflow-x-auto">
+      <div
+        ref={dayPickerRef}
+        className="no-scrollbar flex items-stretch gap-200 overflow-x-auto"
+      >
         {days.map((d, i) => {
           const isSelected = isSameDay(d, selectedDay);
           const isToday = today ? isSameDay(d, today) : false;
@@ -261,7 +237,6 @@ export function DayView({
       </div>
 
       <div
-        ref={gridRef}
         className="relative grid rounded-lg"
         style={{ gridTemplateColumns: '56px minmax(0, 1fr)' }}
       >
