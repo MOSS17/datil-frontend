@@ -2,14 +2,13 @@
 //   VITE_API_MOCKS=true (default) — demo mode. Every API call resolves
 //   against the handlers below; no real backend is contacted.
 //   VITE_API_MOCKS=false — real-backend mode. Only paths in
-//   MOCK_ALLOWLIST still resolve here (calendar is stubbed on the backend
-//   pending Phase 6); everything else falls through to the live backend.
+//   MOCK_ALLOWLIST still resolve here; everything else falls through to
+//   the live backend.
 import {
   buildMockBookingServices,
   createDemoAuthResponse,
   mockAppointments,
   mockBusiness,
-  mockCalendarIntegrations,
   mockCategories,
   mockPersonalTime,
   mockServices,
@@ -21,7 +20,7 @@ export const MOCKS_ENABLED = import.meta.env.VITE_API_MOCKS !== 'false';
 
 // When MOCKS_ENABLED is false, only requests matching one of these patterns
 // still hit the mock router. Everything else is proxied to the real backend.
-const MOCK_ALLOWLIST: RegExp[] = [/^\/calendar\//];
+const MOCK_ALLOWLIST: RegExp[] = [];
 
 const MOCK_LATENCY_MS = 200;
 const MOCK_TIMEZONE_OFFSET = '-06:00';
@@ -374,31 +373,6 @@ const HANDLERS: MockHandler[] = [
   {
     method: 'DELETE',
     pattern: /^\/schedule\/personal-time\/([^/]+)$/,
-    handler: () => undefined,
-  },
-
-  // ── Calendar ────────────────────────────────────────────────────────────
-  {
-    method: 'GET',
-    pattern: /^\/calendar\/integrations$/,
-    handler: () => mockCalendarIntegrations,
-  },
-  {
-    method: 'POST',
-    pattern: /^\/calendar\/integrations$/,
-    handler: ({ body }) => ({
-      id: nowId('cal'),
-      user_id: 'dev-user',
-      provider:
-        typeof body === 'object' && body !== null && 'provider' in body
-          ? (body as { provider: string }).provider
-          : 'google',
-      connected_at: new Date().toISOString(),
-    }),
-  },
-  {
-    method: 'DELETE',
-    pattern: /^\/calendar\/integrations\/([^/]+)$/,
     handler: () => undefined,
   },
 ];

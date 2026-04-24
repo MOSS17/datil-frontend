@@ -7,7 +7,6 @@ import type { Category } from '@/api/types/categories';
 import type { ServiceApi } from '@/api/types/services';
 import type { Appointment } from '@/api/types/appointments';
 import type { Workday, PersonalTime } from '@/api/types/schedule';
-import type { CalendarIntegration } from '@/api/types/calendar';
 
 export const mockUser: User = {
   id: 'dev-user',
@@ -423,16 +422,6 @@ export const mockPersonalTime: PersonalTime[] = [
     start_time: '12:00',
     end_time: '14:00',
     reason: 'Comida con proveedor',
-  },
-];
-
-export const mockCalendarIntegrations: CalendarIntegration[] = [
-  {
-    id: 'cal-google-1',
-    user_id: 'dev-user',
-    provider: 'google',
-    account_email: 'lupitaurias@gmail.com',
-    connected_at: iso('2026-03-01T10:00:00-06:00'),
   },
 ];
 

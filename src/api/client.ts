@@ -22,11 +22,12 @@ interface ApiOptions {
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
-// Endpoints whose 401 we must NOT try to refresh against — a 401 here
-// means the credentials themselves are bad, not that the access token
-// expired. Also prevents recursion: if /auth/refresh itself 401s, we'd
-// otherwise try to refresh it again.
-const REFRESH_SKIP = /^\/auth\/(login|refresh|signup)/;
+// Endpoints whose 401 we must NOT try to refresh against and must NOT
+// kick the user to /login for — a 401 here means the credentials in the
+// request body are bad, not that the access token expired. Also prevents
+// recursion: if /auth/refresh itself 401s, we'd otherwise try to refresh
+// it again.
+const CREDENTIAL_401 = /^\/auth\/(login|refresh|signup)/;
 
 function buildRequest(
   endpoint: string,
@@ -59,7 +60,7 @@ export async function apiClient<T>(endpoint: string, options: ApiOptions = {}): 
 
   let response = await fetch(buildRequest(endpoint, method, body, customHeaders));
 
-  if (response.status === 401 && !REFRESH_SKIP.test(endpoint)) {
+  if (response.status === 401 && !CREDENTIAL_401.test(endpoint)) {
     const newToken = await refreshAccessToken();
     if (newToken) {
       // Retry with the freshly-minted access token. buildRequest reads
@@ -68,7 +69,7 @@ export async function apiClient<T>(endpoint: string, options: ApiOptions = {}): 
     }
   }
 
-  if (response.status === 401) {
+  if (response.status === 401 && !CREDENTIAL_401.test(endpoint)) {
     removeToken();
     window.location.href = '/login';
     throw new ApiError(401, 'No autorizado');

@@ -1,33 +1,82 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { ENDPOINTS } from '@/api/endpoints';
-import type { CalendarIntegration } from '@/api/types/calendar';
+import type {
+  GoogleAuthorizeResponse,
+  IcsConnection,
+} from '@/api/types/calendar';
 
 export const calendarKeys = {
-  all: ['calendar-integrations'] as const,
+  ics: ['calendar', 'ics'] as const,
 };
 
-export function useCalendarIntegrations() {
-  return useQuery({
-    queryKey: calendarKeys.all,
-    queryFn: () => apiClient<CalendarIntegration[]>(ENDPOINTS.CALENDAR),
+// No GET endpoint exists yet for calendar integrations. ICS connection
+// state lives in the query cache, written by the mutations below. A page
+// reload drops it back to "disconnected"; the user can re-click Conectar
+// and the backend (idempotent) hands back the same URL. Follow-up: real
+// GET so state survives reloads.
+export function useIcsConnection() {
+  return useQuery<IcsConnection | null>({
+    queryKey: calendarKeys.ics,
+    queryFn: () => Promise.resolve(null),
+    enabled: false,
+    initialData: null,
+    staleTime: Infinity,
   });
 }
 
-export function useConnectCalendar() {
-  const queryClient = useQueryClient();
+export function useConnectIcs() {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: (provider: string) =>
-      apiClient<CalendarIntegration>(ENDPOINTS.CALENDAR, { method: 'POST', body: { provider } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: calendarKeys.all }),
+    mutationFn: () =>
+      apiClient<IcsConnection>(ENDPOINTS.CALENDAR.ICS_CONNECT, { method: 'POST' }),
+    onSuccess: (data) => {
+      qc.setQueryData(calendarKeys.ics, data);
+      // Trigger the OS Subscribe dialog. No-ops on platforms without a
+      // webcal:// handler — connected state is still set above so the
+      // user can grab the HTTPS url from "Más opciones".
+      window.location.href = data.webcal_url;
+    },
   });
 }
 
-export function useDisconnectCalendar() {
-  const queryClient = useQueryClient();
+export function useRotateIcsToken() {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      apiClient<void>(`${ENDPOINTS.CALENDAR}/${id}`, { method: 'DELETE' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: calendarKeys.all }),
+    mutationFn: () =>
+      apiClient<IcsConnection>(ENDPOINTS.CALENDAR.ICS_ROTATE, { method: 'POST' }),
+    onSuccess: (data) => {
+      qc.setQueryData(calendarKeys.ics, data);
+    },
+  });
+}
+
+export function useDisconnectIcs() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiClient<void>(ENDPOINTS.CALENDAR.ICS_DISCONNECT, { method: 'DELETE' }),
+    onSuccess: () => {
+      qc.setQueryData(calendarKeys.ics, null);
+    },
+  });
+}
+
+export function useConnectGoogle() {
+  return useMutation({
+    mutationFn: () =>
+      apiClient<GoogleAuthorizeResponse>(ENDPOINTS.CALENDAR.GOOGLE_CONNECT, {
+        method: 'POST',
+      }),
+    onSuccess: (res) => {
+      window.location.assign(res.authorize_url);
+    },
+  });
+}
+
+export function useDisconnectGoogle() {
+  return useMutation({
+    mutationFn: () =>
+      apiClient<void>(ENDPOINTS.CALENDAR.GOOGLE_DISCONNECT, { method: 'DELETE' }),
   });
 }

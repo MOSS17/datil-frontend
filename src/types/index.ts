@@ -7,4 +7,4 @@ export type {
   AppointmentService,
 } from '@/api/types/appointments';
 export type { Workday, WorkHour, PersonalTime } from '@/api/types/schedule';
-export type { CalendarIntegration } from '@/api/types/calendar';
+export type { IcsConnection, GoogleAuthorizeResponse } from '@/api/types/calendar';
