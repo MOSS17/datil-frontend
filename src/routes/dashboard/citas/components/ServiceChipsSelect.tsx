@@ -1,5 +1,5 @@
 import { ChevronDown, X } from 'lucide-react';
-import { useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 
 export interface ServiceOption {
@@ -35,6 +35,24 @@ export function ServiceChipsSelect({
     () => value.map((v) => options.find((o) => o.id === v)).filter(Boolean) as ServiceOption[],
     [value, options],
   );
+
+  useEffect(() => {
+    if (!open) return;
+    const handlePointer = (e: MouseEvent | TouchEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', handlePointer);
+    document.addEventListener('touchstart', handlePointer);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handlePointer);
+      document.removeEventListener('touchstart', handlePointer);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [open]);
 
   const toggle = (optId: string) => {
     if (value.includes(optId)) onChange(value.filter((v) => v !== optId));
