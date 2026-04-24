@@ -120,10 +120,12 @@ export function WeekGrid({
     return map;
   }, [workdays, days, startHour, totalMinutes]);
 
-  // Blocked minute ranges (appointments + personal time + off-hours) indexed
-  // by day. Used while dragging a new-range selection so the end of the drag
-  // can't spill into an already-occupied slot. `minutesSinceStart` omitted
-  // from deps intentionally: it closes over a stable `startHour`.
+  // Blocked minute ranges (appointments + personal time) indexed by day.
+  // Used while dragging a new-range selection so the end of the drag can't
+  // spill into an already-occupied slot. Off-hours are NOT blocked — they
+  // render as a grey overlay, but the user is allowed to drag across them
+  // and will be asked to confirm an out-of-hours booking. `minutesSinceStart`
+  // omitted from deps intentionally: it closes over a stable `startHour`.
   const blockedByDay = useMemo(() => {
     const map: Array<Array<[number, number]>> = Array.from(
       { length: 7 },
@@ -158,11 +160,8 @@ export function WeekGrid({
         map[dayIdx].push([0, totalMinutes]);
       }
     }
-    for (let i = 0; i < 7; i++) {
-      for (const range of offHoursByDay[i]) map[i].push(range);
-    }
     return map;
-  }, [appointments, personalTimes, offHoursByDay, days, startHour, totalMinutes]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [appointments, personalTimes, days, startHour, totalMinutes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Clamp a drag end so the selected range [min(start,end), max(start,end)]
   // never overlaps a blocked interval. Start is assumed to land in free
@@ -244,10 +243,6 @@ export function WeekGrid({
     const rect = cell.getBoundingClientRect();
     const y = e.clientY - rect.top;
     const startMinutes = yToSnappedMinutes(y);
-    const inOffHour = (offHoursByDay[dayIndex] ?? []).some(
-      ([s, e]) => startMinutes >= s && startMinutes < e,
-    );
-    if (inOffHour) return;
     setDrag({
       dayIndex,
       startMinutes,
@@ -457,8 +452,7 @@ export function WeekGrid({
                   <div
                     key={`off-${i}`}
                     aria-hidden
-                    onPointerDown={(ev) => ev.stopPropagation()}
-                    className="absolute inset-x-0 cursor-not-allowed bg-surface-disabled/70"
+                    className="pointer-events-none absolute inset-x-0 bg-surface-disabled/70"
                     style={{ top: s * pxPerMinute, height: (e - s) * pxPerMinute }}
                   />
                 ))}

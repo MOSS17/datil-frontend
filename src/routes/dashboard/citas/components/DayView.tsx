@@ -119,8 +119,10 @@ export function DayView({
   }, [workdays, selectedDay, startHour, totalMinutes]);
 
   // Blocked minute ranges on the selected day (appointments + personal
-  // time + off-hours). Used to clamp a new-range drag so it can't spill
-  // into an occupied slot.
+  // time). Used to clamp a new-range drag so it can't spill into an
+  // occupied slot. Off-hours are NOT blocked — they render as a grey
+  // overlay but the user is allowed to drag across them and will be asked
+  // to confirm an out-of-hours booking.
   const blocked = useMemo(() => {
     const out: Array<[number, number]> = [];
     for (const a of appointments) {
@@ -151,9 +153,8 @@ export function DayView({
         out.push([0, totalMinutes]);
       }
     }
-    for (const r of offHours) out.push(r);
     return out;
-  }, [appointments, personalTimes, offHours, selectedDay, startHour, totalMinutes]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [appointments, personalTimes, selectedDay, startHour, totalMinutes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const clampDragEnd = (start: number, candidate: number): number => {
     if (candidate >= start) {
@@ -224,8 +225,6 @@ export function DayView({
     if (!rect) return;
     const y = e.clientY - rect.top;
     const startMinutes = yToSnappedMinutes(y);
-    const inOffHour = offHours.some(([s, e2]) => startMinutes >= s && startMinutes < e2);
-    if (inOffHour) return;
     setDrag({ startMinutes, endMinutes: startMinutes, moved: false });
   };
 
@@ -344,8 +343,7 @@ export function DayView({
               <div
                 key={`off-${i}`}
                 aria-hidden
-                onPointerDown={(ev) => ev.stopPropagation()}
-                className="absolute inset-x-0 cursor-not-allowed bg-surface-disabled/70"
+                className="pointer-events-none absolute inset-x-0 bg-surface-disabled/70"
                 style={{ top: s * pxPerMinute, height: (e2 - s) * pxPerMinute }}
               />
             ))}

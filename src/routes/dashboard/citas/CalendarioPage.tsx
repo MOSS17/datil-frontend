@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Toast, type ToastVariant } from '@/components/ui/Toast';
 import { useAppointments, useCreateAppointment } from '@/api/hooks/useAppointments';
 import { enrichAppointments } from '@/lib/appointmentEnrich';
@@ -21,7 +22,14 @@ import { WeekGrid, type RangeSelection } from './components/WeekGrid';
 import { DayView } from './components/DayView';
 import { NuevoBloqueDrawer } from './components/NuevoBloqueDrawer';
 import { CalendarioPageSkeleton } from './components/CalendarioPageSkeleton';
-import { addDays, formatIsoDate, isSameDay, startOfWeekMon, toBusinessRfc3339 } from './utils';
+import {
+  addDays,
+  formatIsoDate,
+  isSameDay,
+  rangeIsOutsideBusinessHours,
+  startOfWeekMon,
+  toBusinessRfc3339,
+} from './utils';
 import type { CitaFormValues, TiempoPersonalFormValues } from './schema';
 import { ApiError } from '@/api/client';
 
@@ -139,7 +147,7 @@ export default function CalendarioPage() {
     setCitaError(null);
     setTiempoError(null);
   }, []);
-  const handleSelectRange = useCallback((range: RangeSelection) => {
+  const openDrawerForRange = useCallback((range: RangeSelection) => {
     setPrefill({
       date: formatIsoDate(range.day),
       start_time: range.startTime,
@@ -149,6 +157,31 @@ export default function CalendarioPage() {
     setTiempoError(null);
     setDrawerOpen(true);
   }, []);
+  const [pendingOffHourRange, setPendingOffHourRange] =
+    useState<RangeSelection | null>(null);
+  const handleSelectRange = useCallback(
+    (range: RangeSelection) => {
+      if (
+        rangeIsOutsideBusinessHours(
+          range.day,
+          range.startTime,
+          range.endTime,
+          workdaysQuery.data,
+        )
+      ) {
+        setPendingOffHourRange(range);
+        return;
+      }
+      openDrawerForRange(range);
+    },
+    [workdaysQuery.data, openDrawerForRange],
+  );
+  const confirmOffHourRange = useCallback(() => {
+    if (!pendingOffHourRange) return;
+    const range = pendingOffHourRange;
+    setPendingOffHourRange(null);
+    openDrawerForRange(range);
+  }, [pendingOffHourRange, openDrawerForRange]);
   const handleSelectAppointment = useCallback((appointment: Appointment) => {
     setSelectedAppointment(appointment);
     setDetailDrawerOpen(true);
@@ -317,6 +350,16 @@ export default function CalendarioPage() {
         message={toast?.message ?? ''}
         variant={toast?.variant ?? 'success'}
         onClose={() => setToast(null)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(pendingOffHourRange)}
+        onClose={() => setPendingOffHourRange(null)}
+        onConfirm={confirmOffHourRange}
+        title="Agendar fuera del horario"
+        description="Esta hora está fuera del horario de atención configurado. ¿Quieres continuar con una cita extraordinaria?"
+        confirmLabel="Sí, continuar"
+        cancelLabel="Cancelar"
       />
     </>
   );
