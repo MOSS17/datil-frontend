@@ -2,7 +2,6 @@ import { useRef, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { Image as ImageIcon, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useUploadBusinessLogo } from '@/api/hooks/useBusiness';
 import { ApiError } from '@/api/client';
@@ -57,62 +56,60 @@ export function LogoIdentityCard({ business }: LogoIdentityCardProps) {
   };
 
   return (
-    <Card>
-      <div className="flex flex-col gap-600">
-        <h2 className="font-serif text-h6 text-heading">Logo e Identidad</h2>
+    <div className="flex flex-col gap-600">
+      <h2 className="font-serif text-h6 text-heading">Logo e Identidad</h2>
 
-        <div className="flex items-start gap-600">
-          <div
-            aria-hidden
-            className="flex h-1400 w-1400 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-brand-subtle"
-          >
-            {business.logo_url ? (
-              <img src={business.logo_url} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <ImageIcon size={24} className="text-icon-secondary-subtle" />
-            )}
-          </div>
-          <div className="flex flex-col gap-200">
-            <Button
-              variant="secondary"
-              size="md"
-              leftIcon={<Upload aria-hidden size={14} strokeWidth={1.75} />}
-              onClick={handleFilePick}
-              isLoading={uploadLogo.isPending}
-            >
-              Subir Logo
-            </Button>
-            <p className="font-sans text-caption text-muted">PNG, JPG o WebP. Máx 2MB.</p>
-            {logoError && (
-              <p role="alert" className="font-sans text-caption text-error">
-                {logoError}
-              </p>
-            )}
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={ACCEPTED_LOGO_MIME.join(',')}
-            className="hidden"
-            onChange={handleFileChange}
-          />
+      <div className="flex items-start gap-600">
+        <div
+          aria-hidden
+          className="flex h-1400 w-1400 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-surface-brand-subtle"
+        >
+          {business.logo_url ? (
+            <img src={business.logo_url} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <ImageIcon size={24} className="text-icon-secondary-subtle" />
+          )}
         </div>
-
-        <Input
-          label="Nombre  del Negocio"
-          placeholder="Lupita Urias Makeup Artist"
-          error={errors.name?.message}
-          {...register('name')}
-        />
-
-        <Input
-          label="URL de Página de Citas"
-          leftAddon={<span>datil.app/</span>}
-          placeholder="lupita-urias"
-          error={errors.slug?.message}
-          {...register('slug')}
+        <div className="flex flex-col gap-200">
+          <Button
+            variant="secondary"
+            size="md"
+            leftIcon={<Upload aria-hidden size={14} strokeWidth={1.75} />}
+            onClick={handleFilePick}
+            isLoading={uploadLogo.isPending}
+          >
+            Subir Logo
+          </Button>
+          <p className="font-sans text-caption text-muted">PNG, JPG o WebP. Máx 2MB.</p>
+          {logoError && (
+            <p role="alert" className="font-sans text-caption text-error">
+              {logoError}
+            </p>
+          )}
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPTED_LOGO_MIME.join(',')}
+          className="hidden"
+          onChange={handleFileChange}
         />
       </div>
-    </Card>
+
+      <Input
+        label="Nombre  del Negocio"
+        placeholder="Lupita Urias Makeup Artist"
+        error={errors.name?.message}
+        {...register('name')}
+      />
+
+      <Input
+        label="URL de Página de Citas"
+        leftAddon={<span>datil.app/</span>}
+        placeholder="lupita-urias"
+        error={errors.slug?.message}
+        {...register('slug')}
+      />
+    </div>
   );
 }

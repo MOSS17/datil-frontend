@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Save } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useMyBusiness, useUpdateBusiness } from '@/api/hooks/useBusiness';
 import { applyApiErrors } from '@/api/formErrors';
@@ -69,9 +71,24 @@ export default function ConfiguracionPage() {
       ) : (
         <div className="grid grid-cols-1 gap-600 lg:grid-cols-2 items-start">
           <FormProvider {...methods}>
-            <form onSubmit={onSubmit} className="flex flex-col gap-600">
-              <LogoIdentityCard business={business} />
-              <MensajeBienvenidaCard />
+            <form onSubmit={onSubmit}>
+              <Card>
+                <div className="flex flex-col gap-700">
+                  <LogoIdentityCard business={business} />
+                  <MensajeBienvenidaCard />
+                  {methods.formState.isDirty && (
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      fullWidth
+                      isLoading={updateBusiness.isPending}
+                      leftIcon={<Save aria-hidden size={16} strokeWidth={1.75} />}
+                    >
+                      Guardar Cambios
+                    </Button>
+                  )}
+                </div>
+              </Card>
             </form>
           </FormProvider>
           <div className="flex flex-col gap-600">
