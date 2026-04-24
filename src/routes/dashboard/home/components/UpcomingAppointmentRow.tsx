@@ -1,5 +1,6 @@
 import type { Appointment } from '@/api/types/appointments';
 import { cn } from '@/lib/cn';
+import { computeDurationMin } from '@/lib/appointmentEnrich';
 import {
   formatRelativeDay,
   formatShortDate,
@@ -20,7 +21,12 @@ export function UpcomingAppointmentRow({
   nextUpId,
   now,
 }: UpcomingAppointmentRowProps) {
-  const services = appointment.services.map((s) => s.service_name).join(' + ');
+  const services =
+    appointment.services
+      .map((s) => s.service_name)
+      .filter((name): name is string => Boolean(name))
+      .join(' + ') || 'Cita';
+  const duration = computeDurationMin(appointment);
   const accent = getAppointmentAccent(appointment, now);
   const pill = getStatusPill(appointment, nextUpId, now);
   const start = new Date(appointment.start_time);
@@ -54,7 +60,7 @@ export function UpcomingAppointmentRow({
           {formatTimeOfDay(appointment.start_time)}
         </p>
         <p className="font-sans text-caption text-muted">
-          {appointment.total_duration} min
+          {duration} min
         </p>
       </div>
     </div>

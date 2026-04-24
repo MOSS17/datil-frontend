@@ -30,7 +30,7 @@ export function AppointmentCard({ appointment, className }: AppointmentCardProps
       </p>
       {extras.length > 0 && (
         <p className="truncate text-caption text-accent">
-          + {extras.map((e) => e.service_name).join(', ')}
+          + {extras.map((e) => e.service_name ?? 'Extra').join(', ')}
         </p>
       )}
     </div>

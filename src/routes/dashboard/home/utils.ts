@@ -59,19 +59,6 @@ function endOfWeek(date: Date): Date {
   return end;
 }
 
-function startOfMonth(date: Date): Date {
-  const d = startOfDay(date);
-  d.setDate(1);
-  return d;
-}
-
-function endOfMonth(date: Date): Date {
-  const d = startOfMonth(date);
-  d.setMonth(d.getMonth() + 1);
-  d.setMilliseconds(-1);
-  return d;
-}
-
 export function formatShortDate(date: Date): string {
   const m = SHORT_MONTHS_ES[date.getMonth()];
   return `${date.getDate()} ${m.charAt(0).toUpperCase()}${m.slice(1)}`;
@@ -159,91 +146,6 @@ export function findNextUpId(
         new Date(a.start_time).getTime() - new Date(b.start_time).getTime(),
     )[0];
   return next?.id ?? null;
-}
-
-export interface HomeMetrics {
-  todayCount: number;
-  todayCompleted: number;
-  todayPending: number;
-  weekCount: number;
-  weekCompleted: number;
-  weekPending: number;
-  monthRevenue: number;
-}
-
-export function computeMetrics(
-  appointments: Appointment[],
-  now: Date = new Date(),
-): HomeMetrics {
-  const weekStart = startOfWeek(now).getTime();
-  const weekEnd = endOfWeek(now).getTime();
-  const monthStart = startOfMonth(now).getTime();
-  const monthEnd = endOfMonth(now).getTime();
-
-  const metrics: HomeMetrics = {
-    todayCount: 0,
-    todayCompleted: 0,
-    todayPending: 0,
-    weekCount: 0,
-    weekCompleted: 0,
-    weekPending: 0,
-    monthRevenue: 0,
-  };
-
-  for (const appt of appointments) {
-    if (appt.status === APPOINTMENT_STATUS.CANCELLED) continue;
-    const start = new Date(appt.start_time);
-    const t = start.getTime();
-    const completed = appt.status === APPOINTMENT_STATUS.COMPLETED;
-
-    if (isSameDay(start, now)) {
-      metrics.todayCount++;
-      if (completed) metrics.todayCompleted++;
-      else metrics.todayPending++;
-    }
-    if (t >= weekStart && t <= weekEnd) {
-      metrics.weekCount++;
-      if (completed) metrics.weekCompleted++;
-      else metrics.weekPending++;
-    }
-    if (t >= monthStart && t <= monthEnd && completed) {
-      metrics.monthRevenue += appt.total_price ?? 0;
-    }
-  }
-
-  return metrics;
-}
-
-export function getUpcoming(
-  appointments: Appointment[],
-  now: Date = new Date(),
-  limit = 5,
-): Appointment[] {
-  const t = now.getTime();
-  return appointments
-    .filter(
-      (a) =>
-        a.status !== APPOINTMENT_STATUS.CANCELLED &&
-        new Date(a.end_time).getTime() >= t,
-    )
-    .sort(
-      (a, b) =>
-        new Date(a.start_time).getTime() - new Date(b.start_time).getTime(),
-    )
-    .slice(0, limit);
-}
-
-export function getRecentBookings(
-  appointments: Appointment[],
-  limit = 5,
-): Appointment[] {
-  return [...appointments]
-    .filter((a) => a.status !== APPOINTMENT_STATUS.CANCELLED)
-    .sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    )
-    .slice(0, limit);
 }
 
 export function isRecentlyCreated(

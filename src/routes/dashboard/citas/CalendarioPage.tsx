@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { useAppointments, useCreateBooking } from '@/api/hooks/useAppointments';
+import { useAppointments, useCreateAppointment } from '@/api/hooks/useAppointments';
+import { enrichAppointments } from '@/lib/appointmentEnrich';
 import { useCreatePersonalTime, usePersonalTime } from '@/api/hooks/useSchedule';
 import { useMyBusiness } from '@/api/hooks/useBusiness';
 import { useServices } from '@/api/hooks/useServices';
@@ -29,7 +30,7 @@ export default function CalendarioPage() {
   const personalTimeQuery = usePersonalTime();
   const servicesQuery = useServices();
   const businessQuery = useMyBusiness();
-  const createBooking = useCreateBooking();
+  const createAppointment = useCreateAppointment();
   const createPersonalTime = useCreatePersonalTime();
 
   const isLoading =
@@ -40,12 +41,12 @@ export default function CalendarioPage() {
   const weekEnd = useMemo(() => addDays(weekStart, 7), [weekStart]);
 
   const weekAppointments = useMemo(() => {
-    const all = appointmentsQuery.data ?? [];
+    const all = enrichAppointments(appointmentsQuery.data ?? [], servicesQuery.data);
     return all.filter((a) => {
       const start = new Date(a.start_time);
       return start >= weekStart && start < weekEnd;
     });
-  }, [appointmentsQuery.data, weekStart, weekEnd]);
+  }, [appointmentsQuery.data, servicesQuery.data, weekStart, weekEnd]);
 
   const weekPersonalTimes = useMemo(() => {
     const all = personalTimeQuery.data ?? [];
@@ -90,10 +91,8 @@ export default function CalendarioPage() {
   }, []);
 
   const handleCitaSubmit = async (values: CitaFormValues) => {
-    const businessId = businessQuery.data?.id;
-    if (!businessId) return;
-    await createBooking.mutateAsync({
-      business_id: businessId,
+    if (!businessQuery.data?.id) return;
+    await createAppointment.mutateAsync({
       customer_name: values.customer_name,
       customer_phone: `${values.country_code}${values.customer_phone}`,
       start_time: `${values.date}T${values.start_time}:00`,
@@ -197,7 +196,7 @@ export default function CalendarioPage() {
         formKey={
           prefill ? `${prefill.date}-${prefill.start_time}-${prefill.end_time}` : 'empty'
         }
-        isSubmittingCita={createBooking.isPending}
+        isSubmittingCita={createAppointment.isPending}
         isSubmittingTiempo={createPersonalTime.isPending}
         onSubmitCita={handleCitaSubmit}
         onSubmitTiempo={handleTiempoSubmit}

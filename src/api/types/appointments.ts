@@ -1,25 +1,28 @@
 import type { AppointmentStatus } from '@/lib/constants';
 
 export interface AppointmentService {
+  appointment_id: string;
   service_id: string;
-  service_name: string;
   price: number;
-  duration_minutes: number;
-  is_extra: boolean;
+  duration: number;
+  // Optional client-side enrichment fields — backend does not emit them.
+  // Populated in-memory by joining against the services catalog.
+  service_name?: string;
+  is_extra?: boolean;
 }
 
 export interface Appointment {
   id: string;
-  business_id: string;
   user_id: string;
   customer_name: string;
+  customer_email: string | null;
   customer_phone: string;
   status: AppointmentStatus;
   start_time: string;
   end_time: string;
-  total_price: number;
-  total_duration: number;
-  payment_proof_url: string;
+  total: number;
+  advance_payment_image_url: string | null;
   services: AppointmentService[];
   created_at: string;
+  updated_at: string;
 }
