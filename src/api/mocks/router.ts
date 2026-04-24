@@ -1,37 +1,23 @@
-// TODO(mocks): matches incoming apiClient calls to mock data so the frontend
-// works without a backend (enabled in dev + prod preview). Delete when the real API is wired up.
-import { getToken } from '@/auth/token';
+// Demo-mode mock router. When VITE_API_MOCKS is truthy (default), every
+// API call resolves against the handlers below and no real backend is
+// contacted. Set VITE_API_MOCKS=false to point at a live backend.
 import {
+  buildMockBookingServices,
+  createDemoAuthResponse,
   mockAppointments,
+  mockBusiness,
   mockCalendarIntegrations,
   mockCategories,
   mockPersonalTime,
+  mockServices,
   mockWorkdays,
 } from './data';
+import type { TimeSlot } from '@/api/types/booking';
 
 export const MOCKS_ENABLED = import.meta.env.VITE_API_MOCKS !== 'false';
 
 const MOCK_LATENCY_MS = 200;
-
-// Endpoints covered by the real backend. When an authenticated request matches
-// one of these, skip the mock handler so the fetch hits the real server.
-// Public booking flow requests (no token) still fall through to mocks below.
-const AUTHED_REAL: RegExp[] = [
-  /^\/business$/,
-  /^\/business\/bank$/,
-  /^\/business\/logo$/,
-  /^\/services(\/.*)?$/,
-  /^\/categories(\/.*)?$/,
-];
-
-// Endpoints that always go real, even without a token (signup/login, public
-// booking flow under /book/{slug}/*).
-const ALWAYS_REAL: RegExp[] = [
-  /^\/auth\/login$/,
-  /^\/auth\/signup$/,
-  /^\/auth\/refresh$/,
-  /^\/book\/[^/]+(\/.*)?$/,
-];
+const MOCK_TIMEZONE_OFFSET = '-06:00';
 
 function delay<T>(value: T): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), MOCK_LATENCY_MS));
@@ -59,7 +45,147 @@ function nowId(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}`;
 }
 
+function formField(body: unknown, key: string): string | null {
+  if (body instanceof FormData) {
+    const value = body.get(key);
+    return typeof value === 'string' ? value : null;
+  }
+  if (typeof body === 'object' && body !== null && key in body) {
+    const v = (body as Record<string, unknown>)[key];
+    return typeof v === 'string' ? v : null;
+  }
+  return null;
+}
+
+// Synthesize availability slots from the business's configured workday
+// (mockWorkdays, keyed by DOW where 0=Sunday). Walks every enabled hour
+// window in 1-hour steps. RFC3339 strings with a fixed business offset so
+// the frontend's raw-slice display pattern shows the right wall clock.
+function computeMockSlots(dateIso: string): TimeSlot[] {
+  if (!dateIso) return [];
+  const parts = dateIso.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return [];
+  const [y, m, d] = parts;
+  const date = new Date(y, m - 1, d);
+  const dow = date.getDay();
+  const workday = mockWorkdays.find((w) => w.day === dow);
+  if (!workday || !workday.is_enabled) return [];
+
+  const slots: TimeSlot[] = [];
+  for (const hour of workday.hours) {
+    const [sh, sm] = hour.start_time.split(':').map(Number);
+    const [eh, em] = hour.end_time.split(':').map(Number);
+    const startMin = sh * 60 + sm;
+    const endMin = eh * 60 + em;
+    for (let t = startMin; t + 60 <= endMin; t += 60) {
+      const slotStart = fmtHhmm(t);
+      const slotEnd = fmtHhmm(t + 60);
+      slots.push({
+        start: `${dateIso}T${slotStart}:00${MOCK_TIMEZONE_OFFSET}`,
+        end: `${dateIso}T${slotEnd}:00${MOCK_TIMEZONE_OFFSET}`,
+      });
+    }
+  }
+  return slots;
+}
+
+function fmtHhmm(totalMinutes: number): string {
+  const h = Math.floor(totalMinutes / 60) % 24;
+  const m = totalMinutes % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
 const HANDLERS: MockHandler[] = [
+  // ── Auth ────────────────────────────────────────────────────────────────
+  {
+    method: 'POST',
+    pattern: /^\/auth\/login$/,
+    handler: ({ body }) => {
+      const email = formField(body, 'email') ?? 'demo@datil.mx';
+      return createDemoAuthResponse({ email });
+    },
+  },
+  {
+    method: 'POST',
+    pattern: /^\/auth\/signup$/,
+    handler: ({ body }) => {
+      const email = formField(body, 'email') ?? 'demo@datil.mx';
+      const name = formField(body, 'name') ?? 'Demo';
+      return createDemoAuthResponse({ email, name });
+    },
+  },
+  {
+    method: 'POST',
+    pattern: /^\/auth\/refresh$/,
+    handler: () => createDemoAuthResponse(),
+  },
+  { method: 'GET', pattern: /^\/auth\/me$/, handler: () => createDemoAuthResponse().user },
+
+  // ── Business (authed dashboard) ─────────────────────────────────────────
+  { method: 'GET', pattern: /^\/business$/, handler: () => mockBusiness },
+  {
+    method: 'PUT',
+    pattern: /^\/business$/,
+    handler: ({ body }) => ({
+      ...mockBusiness,
+      ...(typeof body === 'object' && body !== null ? body : {}),
+      updated_at: new Date().toISOString(),
+    }),
+  },
+  {
+    method: 'PUT',
+    pattern: /^\/business\/bank$/,
+    handler: ({ body }) => ({
+      ...mockBusiness,
+      ...(typeof body === 'object' && body !== null ? body : {}),
+      updated_at: new Date().toISOString(),
+    }),
+  },
+  {
+    method: 'PUT',
+    pattern: /^\/business\/logo$/,
+    handler: () => ({
+      ...mockBusiness,
+      logo_url: 'https://placehold.co/200x200',
+      updated_at: new Date().toISOString(),
+    }),
+  },
+
+  // ── Public booking flow (unauthed) ──────────────────────────────────────
+  {
+    method: 'GET',
+    pattern: /^\/book\/([^/]+)$/,
+    handler: (_ctx, [slug]) => ({
+      business: { ...mockBusiness, url: slug },
+      categories: mockCategories,
+    }),
+  },
+  {
+    method: 'GET',
+    pattern: /^\/book\/([^/]+)\/services$/,
+    handler: () => buildMockBookingServices(),
+  },
+  {
+    method: 'GET',
+    pattern: /^\/book\/([^/]+)\/availability$/,
+    handler: ({ query }) => computeMockSlots(query.get('date') ?? ''),
+  },
+  {
+    method: 'POST',
+    pattern: /^\/book\/([^/]+)\/reserve$/,
+    handler: ({ body }) => ({
+      ...mockAppointments[0],
+      id: nowId('apt'),
+      customer_name: formField(body, 'customer_name') ?? 'Cliente Demo',
+      customer_phone: formField(body, 'customer_phone') ?? '+5215555555555',
+      start_time: formField(body, 'start_time') ?? new Date().toISOString(),
+      payment_proof_url: body instanceof FormData && body.get('payment_proof')
+        ? 'https://placehold.co/600x400'
+        : '',
+      created_at: new Date().toISOString(),
+    }),
+  },
+
   // ── Categories ──────────────────────────────────────────────────────────
   { method: 'GET', pattern: /^\/categories$/, handler: () => mockCategories },
   {
@@ -90,6 +216,50 @@ const HANDLERS: MockHandler[] = [
   {
     method: 'DELETE',
     pattern: /^\/categories\/([^/]+)$/,
+    handler: () => undefined,
+  },
+
+  // ── Services (authed dashboard) ─────────────────────────────────────────
+  {
+    method: 'GET',
+    pattern: /^\/services$/,
+    handler: ({ query }) => {
+      const categoryId = query.get('category_id');
+      return categoryId
+        ? mockServices.filter((s) => s.category_id === categoryId)
+        : mockServices;
+    },
+  },
+  {
+    method: 'GET',
+    pattern: /^\/services\/([^/]+)$/,
+    handler: (_ctx, [id]) => mockServices.find((s) => s.id === id) ?? mockServices[0],
+  },
+  {
+    method: 'GET',
+    pattern: /^\/services\/([^/]+)\/extras$/,
+    handler: () => mockServices.filter((s) => s.is_extra),
+  },
+  {
+    method: 'POST',
+    pattern: /^\/services$/,
+    handler: ({ body }) => ({
+      id: nowId('srv'),
+      ...(typeof body === 'object' && body !== null ? body : {}),
+    }),
+  },
+  {
+    method: 'PUT',
+    pattern: /^\/services\/([^/]+)$/,
+    handler: ({ body }, [id]) => ({
+      ...(mockServices.find((s) => s.id === id) ?? mockServices[0]),
+      ...(typeof body === 'object' && body !== null ? body : {}),
+      id,
+    }),
+  },
+  {
+    method: 'DELETE',
+    pattern: /^\/services\/([^/]+)$/,
     handler: () => undefined,
   },
 
@@ -190,10 +360,6 @@ export function resolveMock(
 
   const { path, query } = stripQuery(endpoint);
   const upperMethod = method.toUpperCase();
-
-  if (ALWAYS_REAL.some((re) => re.test(path))) return null;
-
-  if (getToken() && AUTHED_REAL.some((re) => re.test(path))) return null;
 
   for (const entry of HANDLERS) {
     if (entry.method !== upperMethod) continue;

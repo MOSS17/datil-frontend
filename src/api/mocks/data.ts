@@ -1,5 +1,7 @@
-// TODO(mocks): dev-only fixtures. Delete this file and the mock router when the backend is ready.
-import type { User } from '@/api/types/auth';
+// Demo-mode fixtures. When VITE_API_MOCKS is on, these back every API call —
+// no real backend required. This is the prod "demo" deploy target.
+import type { AuthResponse, User } from '@/api/types/auth';
+import type { BookingServiceApi } from '@/api/types/booking';
 import type { BusinessApi } from '@/api/types/business';
 import type { Category } from '@/api/types/categories';
 import type { ServiceApi } from '@/api/types/services';
@@ -425,3 +427,44 @@ export const mockCalendarIntegrations: CalendarIntegration[] = [
     connected_at: iso('2026-03-01T10:00:00-06:00'),
   },
 ];
+
+// Base64url-encode a JSON payload into the standard JWT segment format.
+// Pad stripped so the result is URL-safe and JWT-shaped.
+function b64url(obj: unknown): string {
+  return btoa(JSON.stringify(obj))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
+// Produces a JWT-shaped token that passes the client-side `isTokenExpired`
+// check (exp one year out). The signature segment is unverified client-side,
+// so any placeholder suffices for the demo.
+export function createDemoToken(): string {
+  const header = b64url({ alg: 'HS256', typ: 'JWT' });
+  const payload = b64url({
+    sub: 'dev-user',
+    exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 365,
+  });
+  return `${header}.${payload}.demo`;
+}
+
+export function createDemoAuthResponse(overrides?: Partial<User>): AuthResponse {
+  return {
+    access_token: createDemoToken(),
+    refresh_token: createDemoToken(),
+    user: { ...mockUser, ...overrides },
+  };
+}
+
+// Shape `/book/{slug}/services` response: each main service gets every
+// `is_extra` service attached as `extras[]`. The customer UI filters extras
+// per-category downstream; attaching all of them keeps the mock simple and
+// exercises the "service has extras" UX.
+export function buildMockBookingServices(): BookingServiceApi[] {
+  const extras = mockServices.filter((s) => s.is_extra);
+  return mockServices.map((s) => ({
+    ...s,
+    extras: s.is_extra ? [] : extras,
+  }));
+}
