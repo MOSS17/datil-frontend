@@ -68,7 +68,7 @@ export function formatIsoDate(date: Date): string {
 export function formatHourLabel(hour: number): string {
   const suffix = hour < 12 ? 'AM' : 'PM';
   const h = hour % 12 === 0 ? 12 : hour % 12;
-  return `${h}:00 ${suffix}`;
+  return `${h} ${suffix}`;
 }
 
 export function formatTimeShort(date: Date): string {

@@ -321,16 +321,21 @@ export function DayView({
       >
         <div
           className="relative grid"
-          style={{ gridTemplateColumns: '72px minmax(0, 1fr)' }}
+          style={{ gridTemplateColumns: '56px minmax(0, 1fr)' }}
         >
           <div className="flex flex-col">
-            {hours.map((h) => (
+            {hours.map((h, idx) => (
               <div
                 key={h}
-                className="flex items-start justify-start pt-100 pr-200"
+                className="flex items-start justify-end pr-200"
                 style={{ height: ROW_HEIGHT_PX }}
               >
-                <span className="font-sans text-caption text-muted">{formatHourLabel(h)}</span>
+                <span
+                  className="font-sans text-caption text-muted"
+                  style={idx === 0 ? undefined : { transform: 'translateY(-50%)' }}
+                >
+                  {formatHourLabel(h)}
+                </span>
               </div>
             ))}
           </div>
