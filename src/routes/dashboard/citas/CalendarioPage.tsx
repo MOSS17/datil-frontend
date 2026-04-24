@@ -161,6 +161,16 @@ export default function CalendarioPage() {
     useState<RangeSelection | null>(null);
   const handleSelectRange = useCallback(
     (range: RangeSelection) => {
+      const [sh, sm] = range.startTime.split(':').map(Number);
+      const rangeStart = new Date(range.day);
+      rangeStart.setHours(sh, sm, 0, 0);
+      if (rangeStart.getTime() < Date.now()) {
+        setToast({
+          message: 'No puedes agendar citas en el pasado',
+          variant: 'error',
+        });
+        return;
+      }
       if (
         rangeIsOutsideBusinessHours(
           range.day,
