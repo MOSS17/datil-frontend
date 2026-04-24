@@ -6,7 +6,6 @@ import {
   addDays,
   DAY_SHORT_ES,
   formatHourLabel,
-  formatTimeShort,
   isSameDay,
 } from '../utils';
 import { AppointmentCard } from './AppointmentCard';
@@ -37,17 +36,14 @@ function minutesToHHMM(startHour: number, minutesSinceStart: number): string {
   return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
 }
 
-function makeDateAtMinutes(startHour: number, minutes: number): Date {
-  const total = startHour * 60 + minutes;
-  const d = new Date();
-  d.setHours(Math.floor(total / 60), total % 60, 0, 0);
-  return d;
-}
-
-interface DragState {
-  startMinutes: number;
-  endMinutes: number;
-  moved: boolean;
+function getScrollParent(node: HTMLElement): HTMLElement | null {
+  let el: HTMLElement | null = node.parentElement;
+  while (el) {
+    const { overflowY } = getComputedStyle(el);
+    if (overflowY === 'auto' || overflowY === 'scroll') return el;
+    el = el.parentElement;
+  }
+  return null;
 }
 
 export function DayView({
@@ -78,9 +74,6 @@ export function DayView({
 
   const colRef = useRef<HTMLDivElement | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
-  const [drag, setDrag] = useState<DragState | null>(null);
-  const dragRef = useRef<DragState | null>(null);
-  dragRef.current = drag;
 
   // Current time tick, refreshed once a minute so the "now" indicator
   // moves down as real time advances.
@@ -127,10 +120,9 @@ export function DayView({
   }, [workdays, selectedDay, startHour, totalMinutes]);
 
   // Blocked minute ranges on the selected day (appointments + personal
-  // time). Used to clamp a new-range drag so it can't spill into an
-  // occupied slot. Off-hours are NOT blocked — they render as a grey
-  // overlay but the user is allowed to drag across them and will be asked
-  // to confirm an out-of-hours booking.
+  // time). Used to clamp the default 1-hour window so a tap doesn't spill
+  // into an occupied slot. Off-hours are NOT blocked — they render as a
+  // grey overlay and a tap there will trigger the out-of-hours confirm.
   const blocked = useMemo(() => {
     const out: Array<[number, number]> = [];
     for (const a of appointments) {
@@ -164,76 +156,25 @@ export function DayView({
     return out;
   }, [appointments, personalTimes, selectedDay, startHour, totalMinutes]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const clampDragEnd = (start: number, candidate: number): number => {
-    if (candidate >= start) {
-      let limit = totalMinutes;
-      for (const [bs] of blocked) {
-        if (bs >= start && bs < limit) limit = bs;
-      }
-      return Math.min(candidate, limit);
+  const handleSlotClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target !== e.currentTarget && !(e.target as HTMLElement).dataset.slot) {
+      return;
     }
-    let limit = 0;
-    for (const [, be] of blocked) {
-      if (be <= start && be > limit) limit = be;
-    }
-    return Math.max(candidate, limit);
-  };
-  // Ref pattern so the drag's `useEffect` closure always sees the latest
-  // clamp function without having to re-subscribe pointer listeners when
-  // `blocked` changes.
-  const clampDragEndRef = useRef(clampDragEnd);
-  clampDragEndRef.current = clampDragEnd;
-
-  useEffect(() => {
-    if (!drag) return;
-    const handleMove = (e: PointerEvent) => {
-      const current = dragRef.current;
-      if (!current || !colRef.current) return;
-      const rect = colRef.current.getBoundingClientRect();
-      const y = e.clientY - rect.top;
-      const raw = yToSnappedMinutes(y);
-      const endMinutes = clampDragEndRef.current(current.startMinutes, raw);
-      if (endMinutes !== current.endMinutes) {
-        setDrag({
-          ...current,
-          endMinutes,
-          moved: current.moved || endMinutes !== current.startMinutes,
-        });
-      }
-    };
-    const handleUp = () => {
-      const current = dragRef.current;
-      if (!current) return;
-      let startM = Math.min(current.startMinutes, current.endMinutes);
-      let endM = Math.max(current.startMinutes, current.endMinutes);
-      if (!current.moved || endM - startM < SNAP_MINUTES) {
-        const extended = Math.min(totalMinutes, startM + 60);
-        endM = clampDragEndRef.current(startM, extended);
-      }
-      if (endM <= startM) endM = startM + SNAP_MINUTES;
-      onSelectRange?.({
-        day: selectedDay,
-        startTime: minutesToHHMM(startHour, startM),
-        endTime: minutesToHHMM(startHour, endM),
-      });
-      setDrag(null);
-    };
-
-    window.addEventListener('pointermove', handleMove);
-    window.addEventListener('pointerup', handleUp);
-    return () => {
-      window.removeEventListener('pointermove', handleMove);
-      window.removeEventListener('pointerup', handleUp);
-    };
-  }, [drag, onSelectRange, pxPerMinute, selectedDay, startHour, totalMinutes]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return;
     const rect = colRef.current?.getBoundingClientRect();
     if (!rect) return;
     const y = e.clientY - rect.top;
-    const startMinutes = yToSnappedMinutes(y);
-    setDrag({ startMinutes, endMinutes: startMinutes, moved: false });
+    const startM = yToSnappedMinutes(y);
+    let endM = Math.min(totalMinutes, startM + 60);
+    for (const [bs] of blocked) {
+      if (bs > startM && bs < endM) endM = bs;
+    }
+    if (endM - startM < SNAP_MINUTES) endM = startM + SNAP_MINUTES;
+    if (endM > totalMinutes) return;
+    onSelectRange?.({
+      day: selectedDay,
+      startTime: minutesToHHMM(startHour, startM),
+      endTime: minutesToHHMM(startHour, endM),
+    });
   };
 
   const dayAppointments = appointments.filter((a) =>
@@ -251,32 +192,35 @@ export function DayView({
     );
   });
 
-  const dragTop = drag ? Math.min(drag.startMinutes, drag.endMinutes) * pxPerMinute : 0;
-  const dragHeight = drag
-    ? Math.max(
-        SNAP_MINUTES * pxPerMinute,
-        Math.abs(drag.endMinutes - drag.startMinutes) * pxPerMinute,
-      )
-    : 0;
-
-  // Scroll the main page so business hours (or current time on today) are
-  // in view on mount and whenever the selected day changes. Mobile uses the
-  // page's native scroll rather than an inner scroll container.
+  // Scroll the nearest scrollable ancestor on mount / day change. The
+  // dashboard's <main> element owns the scroll (h-screen + overflow-y-auto),
+  // so the document body is not scrollable — we must find and scroll the
+  // actual scroll container. If today is selected, the current time is
+  // vertically centered; otherwise the day's first business hour sits near
+  // the top.
   useLayoutEffect(() => {
     const el = gridRef.current;
-    if (!el) return;
-    let targetMinutes: number;
+    if (!el || el.getBoundingClientRect().height === 0) return;
+    const scroller = getScrollParent(el);
+    if (!scroller) return;
+    const gridRect = el.getBoundingClientRect();
+    const scrollerRect = scroller.getBoundingClientRect();
+    const gridTopInScroller =
+      scroller.scrollTop + (gridRect.top - scrollerRect.top);
     if (today && isSameDay(selectedDay, today)) {
       const nowMin = today.getHours() * 60 + today.getMinutes();
-      targetMinutes = Math.max(0, nowMin - 60);
-    } else if (offHours.length === 0 || offHours[0][0] > 0) {
-      targetMinutes = 0;
-    } else {
-      targetMinutes = Math.max(0, offHours[0][1] - 60);
+      const targetY = gridTopInScroller + nowMin * pxPerMinute;
+      scroller.scrollTo({
+        top: Math.max(0, targetY - scroller.clientHeight / 2),
+        behavior: 'auto',
+      });
+      return;
     }
-    const rect = el.getBoundingClientRect();
-    const pageY = rect.top + window.scrollY + targetMinutes * pxPerMinute;
-    window.scrollTo({ top: Math.max(0, pageY - 80), behavior: 'auto' });
+    let targetMinutes: number;
+    if (offHours.length === 0 || offHours[0][0] > 0) targetMinutes = 0;
+    else targetMinutes = Math.max(0, offHours[0][1] - 60);
+    const targetY = gridTopInScroller + targetMinutes * pxPerMinute;
+    scroller.scrollTo({ top: Math.max(0, targetY - 80), behavior: 'auto' });
   }, [selectedDay, offHours, pxPerMinute, today]);
 
   return (
@@ -340,13 +284,14 @@ export function DayView({
 
           <div
             ref={colRef}
-            onPointerDown={handlePointerDown}
-            className="relative cursor-crosshair border-l border-subtle select-none touch-none"
+            onClick={handleSlotClick}
+            className="relative cursor-pointer border-l border-subtle"
           >
             {hours.map((_, i) => (
               <div
                 key={i}
-                className="border-b border-subtle transition-colors hover:bg-surface-accent-subtle"
+                data-slot="hour"
+                className="border-b border-subtle"
                 style={{ height: ROW_HEIGHT_PX }}
               />
             ))}
@@ -354,33 +299,12 @@ export function DayView({
             {offHours.map(([s, e2], i) => (
               <div
                 key={`off-${i}`}
+                data-slot="off"
                 aria-hidden
-                className="pointer-events-none absolute inset-x-0 bg-surface-disabled/70"
+                className="absolute inset-x-0 bg-surface-disabled/70"
                 style={{ top: s * pxPerMinute, height: (e2 - s) * pxPerMinute }}
               />
             ))}
-
-            {drag && drag.moved && (
-              <div
-                aria-hidden
-                className="pointer-events-none absolute inset-x-0 flex items-start rounded-sm border border-accent bg-surface-accent-subtle/80 px-300 py-100"
-                style={{ top: dragTop, height: dragHeight }}
-              >
-                <span className="font-sans text-caption font-medium text-accent">
-                  {formatTimeShort(
-                    makeDateAtMinutes(startHour, Math.min(drag.startMinutes, drag.endMinutes)),
-                  )}{' '}
-                  –{' '}
-                  {formatTimeShort(
-                    makeDateAtMinutes(
-                      startHour,
-                      Math.max(drag.startMinutes, drag.endMinutes) ||
-                        Math.min(drag.startMinutes, drag.endMinutes) + SNAP_MINUTES,
-                    ),
-                  )}
-                </span>
-              </div>
-            )}
 
             {dayPersonalTimes.map((p) => {
               if (!p.start_time || !p.end_time) {
@@ -389,7 +313,7 @@ export function DayView({
                     key={p.id}
                     className="absolute inset-x-0 cursor-default"
                     style={{ top: 0, height: hours.length * ROW_HEIGHT_PX }}
-                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <PersonalTimeCard personalTime={p} className="h-full" />
                   </div>
@@ -407,7 +331,7 @@ export function DayView({
                   key={p.id}
                   className="absolute inset-x-0 cursor-default"
                   style={{ top: topPx, height: heightPx }}
-                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <PersonalTimeCard personalTime={p} className="h-full" />
                 </div>
@@ -431,8 +355,10 @@ export function DayView({
                     onSelectAppointment ? 'cursor-pointer' : 'cursor-default',
                   )}
                   style={{ top: topPx, height: heightPx }}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => onSelectAppointment?.(a)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectAppointment?.(a);
+                  }}
                   aria-label={`Ver detalles de cita de ${a.customer_name}`}
                 >
                   <AppointmentCard appointment={a} className="h-full" />
