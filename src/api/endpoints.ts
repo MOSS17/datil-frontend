@@ -23,8 +23,10 @@ export const ENDPOINTS = {
   },
   CALENDAR: {
     GOOGLE_CONNECT: '/calendar/google/connect',
-    APPLE_CONNECT: '/calendar/apple/connect',
-    disconnect: (provider: 'google' | 'apple') => `/calendar/${provider}`,
+    GOOGLE_DISCONNECT: '/calendar/google',
+    ICS_CONNECT: '/calendar/ics/connect',
+    ICS_ROTATE: '/calendar/ics/rotate',
+    ICS_DISCONNECT: '/calendar/ics',
   },
   BOOK: (slug: string) => ({
     page: `/book/${slug}`,

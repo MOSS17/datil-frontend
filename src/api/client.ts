@@ -26,9 +26,8 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 // kick the user to /login for — a 401 here means the credentials in the
 // request body are bad, not that the access token expired. Also prevents
 // recursion: if /auth/refresh itself 401s, we'd otherwise try to refresh
-// it again. /calendar/apple/connect validates iCloud CalDAV credentials
-// synchronously and uses 401 to signal "bad app-specific password".
-const CREDENTIAL_401 = /^\/auth\/(login|refresh|signup)|^\/calendar\/apple\/connect/;
+// it again.
+const CREDENTIAL_401 = /^\/auth\/(login|refresh|signup)/;
 
 function buildRequest(
   endpoint: string,
