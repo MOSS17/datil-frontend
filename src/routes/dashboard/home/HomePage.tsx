@@ -1,8 +1,9 @@
-import { Fragment, useMemo } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Link2, Pin, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Toast, type ToastVariant } from '@/components/ui/Toast';
 import { useDashboard } from '@/api/hooks/useDashboard';
 import { useMyBusiness } from '@/api/hooks/useBusiness';
 import { useServices } from '@/api/hooks/useServices';
@@ -32,6 +33,9 @@ export default function HomePage() {
 
   const now = useMemo(() => new Date(), []);
   const firstName = getFirstName(user?.name ?? '');
+  const [toast, setToast] = useState<{ message: string; variant: ToastVariant } | null>(
+    null,
+  );
 
   const upcoming = useMemo(
     () => enrichAppointments(dashboard?.upcoming ?? [], services),
@@ -53,8 +57,9 @@ export default function HomePage() {
     const url = `${window.location.origin}/${business.slug}`;
     try {
       await navigator.clipboard.writeText(url);
+      setToast({ message: 'Enlace copiado al portapapeles', variant: 'success' });
     } catch {
-      // Clipboard API unavailable; fall back silently.
+      setToast({ message: 'No pudimos copiar el enlace', variant: 'error' });
     }
   };
 
@@ -88,26 +93,41 @@ export default function HomePage() {
   const wrapper =
     'flex flex-col gap-600 px-400 pb-800 md:gap-700 md:px-1000 md:pt-800';
 
+  const toastEl = (
+    <Toast
+      open={Boolean(toast)}
+      message={toast?.message ?? ''}
+      variant={toast?.variant ?? 'success'}
+      onClose={() => setToast(null)}
+    />
+  );
+
   if (isLoading) {
     return (
-      <div className={wrapper}>
-        {header}
-        <HomePageSkeleton />
-      </div>
+      <>
+        <div className={wrapper}>
+          {header}
+          <HomePageSkeleton />
+        </div>
+        {toastEl}
+      </>
     );
   }
 
   if (error || !dashboard) {
     return (
-      <div className={wrapper}>
-        {header}
-        <Card>
-          <ErrorState
-            message="No se pudieron cargar tus citas."
-            onRetry={() => refetch()}
-          />
-        </Card>
-      </div>
+      <>
+        <div className={wrapper}>
+          {header}
+          <Card>
+            <ErrorState
+              message="No se pudieron cargar tus citas."
+              onRetry={() => refetch()}
+            />
+          </Card>
+        </div>
+        {toastEl}
+      </>
     );
   }
 
@@ -144,7 +164,8 @@ export default function HomePage() {
   );
 
   return (
-    <div className={wrapper}>
+    <>
+      <div className={wrapper}>
       {header}
 
       <div className="flex gap-200 md:gap-400">
@@ -252,6 +273,8 @@ export default function HomePage() {
 
       {mobileActions}
       {footer}
-    </div>
+      </div>
+      {toastEl}
+    </>
   );
 }
