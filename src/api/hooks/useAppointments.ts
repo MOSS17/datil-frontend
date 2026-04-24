@@ -66,6 +66,7 @@ export interface UpdateAppointmentInput {
   start_time: string;
   end_time: string;
   total: number;
+  service_ids: string[];
 }
 
 export function useUpdateAppointment() {

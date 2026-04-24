@@ -419,6 +419,11 @@ function EditContent({
   const categoryGroups = categories.map((c) => ({ id: c.id, name: c.name }));
 
   const onSubmit = handleSubmit(async (values) => {
+    const servicesById = new Map(services.map((s) => [s.id, s]));
+    const total = values.service_ids.reduce(
+      (sum, id) => sum + (servicesById.get(id)?.min_price ?? 0),
+      0,
+    );
     try {
       await updateAppointment.mutateAsync({
         id: appointment.id,
@@ -432,7 +437,8 @@ function EditContent({
             business?.timezone,
           ),
           end_time: toBusinessRfc3339(values.date, values.end_time, business?.timezone),
-          total: appointment.total,
+          total,
+          service_ids: values.service_ids,
         },
       });
       onSaved();
@@ -472,7 +478,6 @@ function EditContent({
                 value={field.value}
                 onChange={field.onChange}
                 error={errors.service_ids?.message}
-                disabled
               />
             )}
           />
