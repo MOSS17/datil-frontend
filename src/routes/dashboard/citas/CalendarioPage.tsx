@@ -4,7 +4,11 @@ import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Toast, type ToastVariant } from '@/components/ui/Toast';
-import { useAppointments, useCreateAppointment } from '@/api/hooks/useAppointments';
+import {
+  useAppointments,
+  useCreateAppointment,
+  useMarkAppointmentSeen,
+} from '@/api/hooks/useAppointments';
 import { enrichAppointments } from '@/lib/appointmentEnrich';
 import {
   useCreatePersonalTime,
@@ -76,6 +80,7 @@ export default function CalendarioPage() {
   const businessQuery = useMyBusiness();
   const createAppointment = useCreateAppointment();
   const createPersonalTime = useCreatePersonalTime();
+  const markSeen = useMarkAppointmentSeen();
 
   const isLoading =
     appointmentsQuery.isLoading ||
@@ -192,10 +197,14 @@ export default function CalendarioPage() {
     setPendingOffHourRange(null);
     openDrawerForRange(range);
   }, [pendingOffHourRange, openDrawerForRange]);
-  const handleSelectAppointment = useCallback((appointment: Appointment) => {
-    setSelectedAppointment(appointment);
-    setDetailDrawerOpen(true);
-  }, []);
+  const handleSelectAppointment = useCallback(
+    (appointment: Appointment) => {
+      if (!appointment.seen_at) markSeen.mutate(appointment.id);
+      setSelectedAppointment(appointment);
+      setDetailDrawerOpen(true);
+    },
+    [markSeen],
+  );
   const closeDetailDrawer = useCallback(() => {
     setDetailDrawerOpen(false);
   }, []);

@@ -20,7 +20,8 @@ export function RecentBookingRow({ appointment, now, onSelect }: RecentBookingRo
       .map((s) => s.service_name)
       .filter((name): name is string => Boolean(name))
       .join(' + ') || 'Cita';
-  const fresh = isRecentlyCreated(appointment.created_at, now);
+  const fresh =
+    !appointment.seen_at && isRecentlyCreated(appointment.created_at, now);
   const start = new Date(appointment.start_time);
 
   return (

@@ -344,6 +344,14 @@ const HANDLERS: MockHandler[] = [
     }),
   },
   {
+    method: 'POST',
+    pattern: /^\/appointments\/([^/]+)\/seen$/,
+    handler: (_ctx, [id]) => {
+      const appt = mockAppointments.find((a) => a.id === id) ?? mockAppointments[0];
+      return { ...appt, seen_at: appt.seen_at ?? new Date().toISOString() };
+    },
+  },
+  {
     method: 'DELETE',
     pattern: /^\/appointments\/([^/]+)$/,
     handler: () => undefined,

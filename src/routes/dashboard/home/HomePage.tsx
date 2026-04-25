@@ -10,6 +10,7 @@ import { useServices } from '@/api/hooks/useServices';
 import { useCategories } from '@/api/hooks/useCategories';
 import { useAuth } from '@/auth/AuthContext';
 import { enrichAppointments } from '@/lib/appointmentEnrich';
+import { useMarkAppointmentSeen } from '@/api/hooks/useAppointments';
 import type { Appointment } from '@/api/types/appointments';
 import { PageHeader } from '../components/PageHeader';
 import { ErrorState } from '../components/ErrorState';
@@ -30,7 +31,9 @@ import {
 export default function HomePage() {
   const { user } = useAuth();
   const { data: business } = useMyBusiness();
-  const { data: dashboard, isLoading, error, refetch } = useDashboard();
+  const { data: dashboard, isLoading, error, refetch } = useDashboard({
+    upcomingLimit: 10,
+  });
   const { data: services } = useServices();
   const { data: categories } = useCategories();
   const navigate = useNavigate();
@@ -44,8 +47,10 @@ export default function HomePage() {
     null,
   );
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const markSeen = useMarkAppointmentSeen();
 
   const handleSelectAppointment = (appointment: Appointment) => {
+    if (!appointment.seen_at) markSeen.mutate(appointment.id);
     setSelectedAppointment(appointment);
     setDrawerOpen(true);
   };
@@ -56,8 +61,18 @@ export default function HomePage() {
     [dashboard?.upcoming, services],
   );
   const latest = useMemo(
-    () => enrichAppointments(dashboard?.latest ?? [], services),
+    () =>
+      enrichAppointments(dashboard?.latest ?? [], services)
+        .slice()
+        .sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        ),
     [dashboard?.latest, services],
+  );
+  const unseenLatestCount = useMemo(
+    () => latest.filter((a) => !a.seen_at).length,
+    [latest],
   );
   const selectedEnriched = useMemo(() => {
     if (!selectedAppointment) return null;
@@ -290,9 +305,9 @@ export default function HomePage() {
               <h2 className="font-serif text-h6 text-heading">
                 Últimas Citas Agendadas
               </h2>
-              {latest.length > 0 && (
+              {unseenLatestCount > 0 && (
                 <span className="inline-flex min-h-500 min-w-500 items-center justify-center rounded-full bg-surface-accent px-100 py-25 font-sans text-body-sm font-medium text-on-color">
-                  {latest.length}
+                  {unseenLatestCount}
                 </span>
               )}
             </div>

@@ -151,7 +151,7 @@ export function findNextUpId(
 export function isRecentlyCreated(
   createdAt: string,
   now: Date = new Date(),
-  days = 3,
+  days = 5,
 ): boolean {
   const diff = (now.getTime() - new Date(createdAt).getTime()) / MS_DAY;
   return diff >= 0 && diff < days;
