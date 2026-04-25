@@ -1,4 +1,5 @@
 import { DIAS_SEMANA } from '@/lib/constants';
+import type { Workday } from '@/api/types/schedule';
 
 export const MONTH_NAMES_ES = [
   'Enero',
@@ -67,7 +68,7 @@ export function formatIsoDate(date: Date): string {
 export function formatHourLabel(hour: number): string {
   const suffix = hour < 12 ? 'AM' : 'PM';
   const h = hour % 12 === 0 ? 12 : hour % 12;
-  return `${h}:00 ${suffix}`;
+  return `${h} ${suffix}`;
 }
 
 export function formatTimeShort(date: Date): string {
@@ -113,6 +114,38 @@ export function toBusinessRfc3339(
   timeZone: string | undefined,
 ): string {
   return `${date}T${time}:00${businessTzOffset(date, timeZone)}`;
+}
+
+// Returns true if [startTime, endTime] on `day` is not fully covered by the
+// business's configured work hours for that weekday. `startTime`/`endTime`
+// are `HH:MM` strings. A disabled or missing workday is always off-hours.
+export function rangeIsOutsideBusinessHours(
+  day: Date,
+  startTime: string,
+  endTime: string,
+  workdays: Workday[] | undefined,
+): boolean {
+  if (!workdays) return false;
+  const w = workdays.find((x) => x.day === day.getDay());
+  if (!w || !w.is_enabled || w.hours.length === 0) return true;
+  const [sh, sm] = startTime.split(':').map(Number);
+  const [eh, em] = endTime.split(':').map(Number);
+  const rs = sh * 60 + sm;
+  const re = eh * 60 + em;
+  const blocks = w.hours
+    .map((h) => {
+      const [hsh, hsm] = h.start_time.split(':').map(Number);
+      const [heh, hem] = h.end_time.split(':').map(Number);
+      return [hsh * 60 + hsm, heh * 60 + hem] as [number, number];
+    })
+    .sort((a, b) => a[0] - b[0]);
+  let cursor = rs;
+  for (const [bs, be] of blocks) {
+    if (bs > cursor) break;
+    cursor = Math.max(cursor, be);
+    if (cursor >= re) return false;
+  }
+  return cursor < re;
 }
 
 export const TIME_OPTIONS: { value: string; label: string }[] = Array.from(

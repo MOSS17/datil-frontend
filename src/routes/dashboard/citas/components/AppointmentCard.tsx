@@ -16,7 +16,7 @@ export function AppointmentCard({ appointment, className }: AppointmentCardProps
   return (
     <div
       className={cn(
-        'relative flex h-full min-h-0 flex-col gap-100 overflow-hidden rounded-sm bg-surface-secondary pl-400 pr-300 py-200 font-sans',
+        'relative flex h-full min-h-0 flex-col gap-100 overflow-hidden rounded-sm bg-surface-secondary pl-400 pr-300 py-200 font-sans transition-colors hover:bg-surface-control',
         className,
       )}
     >

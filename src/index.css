@@ -59,3 +59,12 @@
 @utility border-success        { border-color: #636f59; }
 @utility border-success-subtle { border-color: #e5e8e2; }
 @utility border-disabled       { border-color: #d7d5d5; }
+
+/* Hide native scrollbars (Firefox / IE / WebKit) while keeping scroll
+   behavior. Used on horizontal pill rows where the scrollbar appearing
+   after a programmatic scroll-into-view call leaves a visual gutter. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar { display: none; }
+}

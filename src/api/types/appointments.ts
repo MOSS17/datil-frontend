@@ -23,6 +23,7 @@ export interface Appointment {
   total: number;
   advance_payment_image_url: string | null;
   services: AppointmentService[];
+  seen_at: string | null;
   created_at: string;
   updated_at: string;
 }

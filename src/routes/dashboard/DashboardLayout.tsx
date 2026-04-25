@@ -77,7 +77,7 @@ function SidebarNav({ onNavigate }: { onNavigate: () => void }) {
               'flex h-1000 items-center gap-300 rounded-md px-400 font-sans text-body-sm transition-colors',
               isActive
                 ? 'bg-surface-secondary-subtle text-primary'
-                : 'text-body hover:bg-surface-secondary-subtle',
+                : 'hover:bg-surface-secondary-subtle',
             )
           }
         >
@@ -185,7 +185,7 @@ export default function DashboardLayout() {
   }, [drawerOpen]);
 
   return (
-    <div className="flex min-h-screen bg-surface-page">
+    <div className="flex h-screen bg-surface-page">
       {drawerOpen && (
         <button
           type="button"
@@ -195,7 +195,7 @@ export default function DashboardLayout() {
         />
       )}
       <Sidebar open={drawerOpen} onClose={closeDrawer} />
-      <main className="flex-1 min-w-0">
+      <main className="flex-1 min-w-0 overflow-y-auto">
         <MobileTopBar onOpen={openDrawer} />
         <Outlet />
       </main>

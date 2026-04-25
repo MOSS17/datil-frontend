@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/Button';
 import { Drawer } from '@/components/ui/Drawer';
 import { Input } from '@/components/ui/Input';
+import type { Category } from '@/api/types/categories';
 import { categorySchema, type CategoryFormValues } from '../schema';
 import { AllowMultipleToggle } from './AllowMultipleToggle';
 import { AllowMultipleInfo } from './AllowMultipleInfo';
@@ -15,6 +16,9 @@ interface NewCategoryDrawerProps {
   isSubmitting?: boolean;
   submitError?: string | null;
   isExtras?: boolean;
+  // When set, the drawer renders in edit mode: title/submit label change and
+  // the form is pre-populated with the existing category's values.
+  category?: Category | null;
 }
 
 export function NewCategoryDrawer({
@@ -24,9 +28,29 @@ export function NewCategoryDrawer({
   isSubmitting,
   submitError,
   isExtras = false,
+  category,
 }: NewCategoryDrawerProps) {
-  const title = isExtras ? 'Nuevo Grupo de Complementos' : 'Nueva Categoría';
-  const submitLabel = isExtras ? 'Crear Grupo' : 'Crear Categoría';
+  const isEdit = Boolean(category);
+  const title = isEdit
+    ? isExtras
+      ? 'Editar Grupo de Complementos'
+      : 'Editar Categoría'
+    : isExtras
+      ? 'Nuevo Grupo de Complementos'
+      : 'Nueva Categoría';
+  const submitLabel = isEdit
+    ? 'Guardar Cambios'
+    : isExtras
+      ? 'Crear Grupo'
+      : 'Crear Categoría';
+
+  const defaultValues = useMemo<CategoryFormValues>(
+    () => ({
+      name: category?.name ?? '',
+      allowMultiple: category?.allow_multiple ?? false,
+    }),
+    [category],
+  );
 
   const {
     register,
@@ -37,12 +61,12 @@ export function NewCategoryDrawer({
     watch,
   } = useForm<CategoryFormValues>({
     resolver: zodResolver(categorySchema),
-    defaultValues: { name: '', allowMultiple: false },
+    defaultValues,
   });
 
   useEffect(() => {
-    if (!open) reset({ name: '', allowMultiple: false });
-  }, [open, reset]);
+    reset(open ? defaultValues : { name: '', allowMultiple: false });
+  }, [open, defaultValues, reset]);
 
   const submit = handleSubmit(async (values) => {
     await onSubmit(values);

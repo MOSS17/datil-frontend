@@ -14,12 +14,14 @@ interface UpcomingAppointmentRowProps {
   appointment: Appointment;
   nextUpId: string | null;
   now: Date;
+  onSelect?: (appointment: Appointment) => void;
 }
 
 export function UpcomingAppointmentRow({
   appointment,
   nextUpId,
   now,
+  onSelect,
 }: UpcomingAppointmentRowProps) {
   const services =
     appointment.services
@@ -32,7 +34,11 @@ export function UpcomingAppointmentRow({
   const start = new Date(appointment.start_time);
 
   return (
-    <div className="flex items-center gap-400 bg-surface p-400 md:px-500 md:py-400">
+    <button
+      type="button"
+      onClick={() => onSelect?.(appointment)}
+      className="flex w-full items-center gap-400 bg-surface p-400 text-left transition-colors hover:bg-surface-secondary-subtle focus:outline-none focus-visible:bg-surface-secondary-subtle md:px-500 md:py-400"
+    >
       <div className="flex shrink-0 flex-col gap-50 md:w-1300">
         <p className="font-sans text-body-sm font-medium text-body-emphasis">
           {formatRelativeDay(appointment.start_time, now)}
@@ -63,6 +69,6 @@ export function UpcomingAppointmentRow({
           {duration} min
         </p>
       </div>
-    </div>
+    </button>
   );
 }

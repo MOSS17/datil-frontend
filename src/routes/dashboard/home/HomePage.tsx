@@ -1,19 +1,24 @@
-import { Fragment, useMemo } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Link2, Pin, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Toast, type ToastVariant } from '@/components/ui/Toast';
 import { useDashboard } from '@/api/hooks/useDashboard';
 import { useMyBusiness } from '@/api/hooks/useBusiness';
 import { useServices } from '@/api/hooks/useServices';
+import { useCategories } from '@/api/hooks/useCategories';
 import { useAuth } from '@/auth/AuthContext';
 import { enrichAppointments } from '@/lib/appointmentEnrich';
+import { useMarkAppointmentSeen } from '@/api/hooks/useAppointments';
+import type { Appointment } from '@/api/types/appointments';
 import { PageHeader } from '../components/PageHeader';
 import { ErrorState } from '../components/ErrorState';
 import { MetricCard } from './components/MetricCard';
 import { UpcomingAppointmentRow } from './components/UpcomingAppointmentRow';
 import { RecentBookingRow } from './components/RecentBookingRow';
 import { HomePageSkeleton } from './components/HomePageSkeleton';
+import { BookingDetailDrawer } from './components/BookingDetailDrawer';
 import {
   findNextUpId,
   formatMetricRevenue,
@@ -26,21 +31,55 @@ import {
 export default function HomePage() {
   const { user } = useAuth();
   const { data: business } = useMyBusiness();
-  const { data: dashboard, isLoading, error, refetch } = useDashboard();
+  const { data: dashboard, isLoading, error, refetch } = useDashboard({
+    upcomingLimit: 10,
+  });
   const { data: services } = useServices();
+  const { data: categories } = useCategories();
   const navigate = useNavigate();
 
   const now = useMemo(() => new Date(), []);
   const firstName = getFirstName(user?.name ?? '');
+  const [toast, setToast] = useState<{ message: string; variant: ToastVariant } | null>(
+    null,
+  );
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(
+    null,
+  );
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const markSeen = useMarkAppointmentSeen();
+
+  const handleSelectAppointment = (appointment: Appointment) => {
+    if (!appointment.seen_at) markSeen.mutate(appointment.id);
+    setSelectedAppointment(appointment);
+    setDrawerOpen(true);
+  };
+  const closeDrawer = () => setDrawerOpen(false);
 
   const upcoming = useMemo(
     () => enrichAppointments(dashboard?.upcoming ?? [], services),
     [dashboard?.upcoming, services],
   );
   const latest = useMemo(
-    () => enrichAppointments(dashboard?.latest ?? [], services),
+    () =>
+      enrichAppointments(dashboard?.latest ?? [], services)
+        .slice()
+        .sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        ),
     [dashboard?.latest, services],
   );
+  const unseenLatestCount = useMemo(
+    () => latest.filter((a) => !a.seen_at).length,
+    [latest],
+  );
+  const selectedEnriched = useMemo(() => {
+    if (!selectedAppointment) return null;
+    const fromUpcoming = upcoming.find((a) => a.id === selectedAppointment.id);
+    const fromLatest = latest.find((a) => a.id === selectedAppointment.id);
+    return fromUpcoming ?? fromLatest ?? selectedAppointment;
+  }, [selectedAppointment, upcoming, latest]);
   const nextUpId = useMemo(() => findNextUpId(upcoming, now), [upcoming, now]);
   const isEmpty =
     (dashboard?.today_count ?? 0) === 0 &&
@@ -53,8 +92,9 @@ export default function HomePage() {
     const url = `${window.location.origin}/${business.slug}`;
     try {
       await navigator.clipboard.writeText(url);
+      setToast({ message: 'Enlace copiado al portapapeles', variant: 'success' });
     } catch {
-      // Clipboard API unavailable; fall back silently.
+      setToast({ message: 'No pudimos copiar el enlace', variant: 'error' });
     }
   };
 
@@ -69,7 +109,7 @@ export default function HomePage() {
         Compartir Página de Reservas
       </Button>
       <Button
-        onClick={() => navigate('/dashboard/citas')}
+        onClick={() => navigate('/dashboard/citas', { state: { openDrawer: true } })}
         leftIcon={<Plus aria-hidden size={16} strokeWidth={1.75} />}
       >
         Nueva Cita
@@ -88,26 +128,62 @@ export default function HomePage() {
   const wrapper =
     'flex flex-col gap-600 px-400 pb-800 md:gap-700 md:px-1000 md:pt-800';
 
+  const toastEl = (
+    <Toast
+      open={Boolean(toast)}
+      message={toast?.message ?? ''}
+      variant={toast?.variant ?? 'success'}
+      onClose={() => setToast(null)}
+    />
+  );
+
+  const drawerEl = (
+    <BookingDetailDrawer
+      appointment={selectedEnriched}
+      open={drawerOpen}
+      onClose={closeDrawer}
+      services={services ?? []}
+      categories={categories ?? []}
+      business={business}
+      onSaved={() => {
+        setToast({ message: 'Cita actualizada', variant: 'success' });
+      }}
+      onDeleted={() => {
+        setDrawerOpen(false);
+        setToast({ message: 'Cita eliminada', variant: 'success' });
+      }}
+      onError={(message) => setToast({ message, variant: 'error' })}
+    />
+  );
+
   if (isLoading) {
     return (
-      <div className={wrapper}>
-        {header}
-        <HomePageSkeleton />
-      </div>
+      <>
+        <div className={wrapper}>
+          {header}
+          <HomePageSkeleton />
+        </div>
+        {toastEl}
+        {drawerEl}
+      </>
     );
   }
 
   if (error || !dashboard) {
     return (
-      <div className={wrapper}>
-        {header}
-        <Card>
-          <ErrorState
-            message="No se pudieron cargar tus citas."
-            onRetry={() => refetch()}
-          />
-        </Card>
-      </div>
+      <>
+        <div className={wrapper}>
+          {header}
+          <Card>
+            <ErrorState
+              message="No se pudieron cargar tus citas."
+              onRetry={() => refetch()}
+            />
+          </Card>
+        </div>
+        {toastEl}
+        {drawerEl}
+      </>
     );
   }
 
@@ -126,7 +202,7 @@ export default function HomePage() {
       </Button>
       <Button
         fullWidth
-        onClick={() => navigate('/dashboard/citas')}
+        onClick={() => navigate('/dashboard/citas', { state: { openDrawer: true } })}
         leftIcon={<Plus aria-hidden size={16} strokeWidth={1.75} />}
       >
         Nueva Cita
@@ -144,7 +220,8 @@ export default function HomePage() {
   );
 
   return (
-    <div className={wrapper}>
+    <>
+      <div className={wrapper}>
       {header}
 
       <div className="flex gap-200 md:gap-400">
@@ -212,6 +289,7 @@ export default function HomePage() {
                     appointment={appt}
                     nextUpId={nextUpId}
                     now={now}
+                    onSelect={handleSelectAppointment}
                   />
                   <div className="border-t border-subtle" />
                 </Fragment>
@@ -227,9 +305,9 @@ export default function HomePage() {
               <h2 className="font-serif text-h6 text-heading">
                 Últimas Citas Agendadas
               </h2>
-              {latest.length > 0 && (
+              {unseenLatestCount > 0 && (
                 <span className="inline-flex min-h-500 min-w-500 items-center justify-center rounded-full bg-surface-accent px-100 py-25 font-sans text-body-sm font-medium text-on-color">
-                  {latest.length}
+                  {unseenLatestCount}
                 </span>
               )}
             </div>
@@ -241,7 +319,11 @@ export default function HomePage() {
             ) : (
               latest.map((appt) => (
                 <Fragment key={appt.id}>
-                  <RecentBookingRow appointment={appt} now={now} />
+                  <RecentBookingRow
+                    appointment={appt}
+                    now={now}
+                    onSelect={handleSelectAppointment}
+                  />
                   <div className="border-t border-subtle" />
                 </Fragment>
               ))
@@ -252,6 +334,9 @@ export default function HomePage() {
 
       {mobileActions}
       {footer}
-    </div>
+      </div>
+      {toastEl}
+      {drawerEl}
+    </>
   );
 }

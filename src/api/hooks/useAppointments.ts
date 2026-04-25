@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { ENDPOINTS } from '@/api/endpoints';
 import type { Appointment } from '@/api/types/appointments';
+import type { DashboardData } from '@/api/types/dashboard';
 import { dashboardKeys } from './useDashboard';
 
 export interface UseAppointmentsOptions {
@@ -43,6 +44,7 @@ export interface CreateAppointmentInput {
   customer_phone: string;
   customer_email?: string | null;
   start_time: string;
+  end_time?: string;
   service_ids: string[];
   extra_ids?: string[];
 }
@@ -66,6 +68,7 @@ export interface UpdateAppointmentInput {
   start_time: string;
   end_time: string;
   total: number;
+  service_ids: string[];
 }
 
 export function useUpdateAppointment() {
@@ -127,6 +130,46 @@ export function useDeleteAppointment() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: appointmentKeys.all });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+    },
+  });
+}
+
+export function useMarkAppointmentSeen() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiClient<Appointment>(`${ENDPOINTS.APPOINTMENTS}/${id}/seen`, {
+        method: 'POST',
+      }),
+    // Optimistic patch of the cached dashboard + appointment lists so the
+    // "new" pill and badge count update instantly. We intentionally do NOT
+    // invalidate the dashboard query — the row must stay visible in the
+    // "Últimas Citas Agendadas" list for the rest of this session, and
+    // only drop off on the next real fetch (page reload / navigation).
+    onMutate: async (id) => {
+      const stamp = new Date().toISOString();
+      const patchAppt = <T extends { id: string; seen_at: string | null }>(a: T): T =>
+        a.id === id && !a.seen_at ? { ...a, seen_at: stamp } : a;
+
+      queryClient.setQueriesData<DashboardData | undefined>(
+        { queryKey: dashboardKeys.all },
+        (old) =>
+          old
+            ? {
+                ...old,
+                upcoming: old.upcoming.map(patchAppt),
+                latest: old.latest.map(patchAppt),
+              }
+            : old,
+      );
+      queryClient.setQueriesData<Appointment[] | undefined>(
+        { queryKey: appointmentKeys.all },
+        (old) => (old ? old.map(patchAppt) : old),
+      );
+      queryClient.setQueryData<Appointment | undefined>(
+        appointmentKeys.detail(id),
+        (old) => (old && !old.seen_at ? { ...old, seen_at: stamp } : old),
+      );
     },
   });
 }
