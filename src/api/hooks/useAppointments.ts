@@ -14,6 +14,7 @@ export const appointmentKeys = {
   all: ['appointments'] as const,
   list: (opts: UseAppointmentsOptions) => [...appointmentKeys.all, 'list', opts] as const,
   detail: (id: string) => [...appointmentKeys.all, 'detail', id] as const,
+  unseenCount: () => [...appointmentKeys.all, 'unseen-count'] as const,
 };
 
 function buildQuery(opts: UseAppointmentsOptions): string {
@@ -57,6 +58,7 @@ export function useCreateAppointment() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: appointmentKeys.all });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+      queryClient.invalidateQueries({ queryKey: appointmentKeys.unseenCount() });
     },
   });
 }
@@ -130,7 +132,17 @@ export function useDeleteAppointment() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: appointmentKeys.all });
       queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+      queryClient.invalidateQueries({ queryKey: appointmentKeys.unseenCount() });
     },
+  });
+}
+
+export function useUnseenCount() {
+  return useQuery({
+    queryKey: appointmentKeys.unseenCount(),
+    queryFn: () =>
+      apiClient<{ count: number }>(ENDPOINTS.APPOINTMENTS_UNSEEN_COUNT),
+    select: (data) => data.count,
   });
 }
 
@@ -151,25 +163,45 @@ export function useMarkAppointmentSeen() {
       const patchAppt = <T extends { id: string; seen_at: string | null }>(a: T): T =>
         a.id === id && !a.seen_at ? { ...a, seen_at: stamp } : a;
 
+      let wasUnseen = false;
+
       queryClient.setQueriesData<DashboardData | undefined>(
         { queryKey: dashboardKeys.all },
-        (old) =>
-          old
-            ? {
-                ...old,
-                upcoming: old.upcoming.map(patchAppt),
-                latest: old.latest.map(patchAppt),
-              }
-            : old,
+        (old) => {
+          if (!old) return old;
+          if (old.latest.some((a) => a.id === id && !a.seen_at)) wasUnseen = true;
+          return {
+            ...old,
+            upcoming: old.upcoming.map(patchAppt),
+            latest: old.latest.map(patchAppt),
+          };
+        },
       );
       queryClient.setQueriesData<Appointment[] | undefined>(
         { queryKey: appointmentKeys.all },
-        (old) => (old ? old.map(patchAppt) : old),
+        (old) => {
+          if (!old) return old;
+          if (old.some((a) => a.id === id && !a.seen_at)) wasUnseen = true;
+          return old.map(patchAppt);
+        },
       );
       queryClient.setQueryData<Appointment | undefined>(
         appointmentKeys.detail(id),
-        (old) => (old && !old.seen_at ? { ...old, seen_at: stamp } : old),
+        (old) => {
+          if (old && !old.seen_at) {
+            wasUnseen = true;
+            return { ...old, seen_at: stamp };
+          }
+          return old;
+        },
       );
+
+      if (wasUnseen) {
+        queryClient.setQueryData<{ count: number } | undefined>(
+          appointmentKeys.unseenCount(),
+          (old) => (old && old.count > 0 ? { count: old.count - 1 } : old),
+        );
+      }
     },
   });
 }

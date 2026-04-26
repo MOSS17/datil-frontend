@@ -16,6 +16,7 @@ export const ENDPOINTS = {
   CATEGORIES: '/categories',
   SERVICES: '/services',
   APPOINTMENTS: '/appointments',
+  APPOINTMENTS_UNSEEN_COUNT: '/appointments/unseen-count',
   DASHBOARD: '/dashboard',
   SCHEDULE: {
     WORKDAYS: '/schedule/workdays',

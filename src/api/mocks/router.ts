@@ -300,6 +300,17 @@ const HANDLERS: MockHandler[] = [
   { method: 'GET', pattern: /^\/appointments$/, handler: () => mockAppointments },
   {
     method: 'GET',
+    pattern: /^\/appointments\/unseen-count$/,
+    handler: () => {
+      const cutoff = Date.now() - 5 * 24 * 60 * 60 * 1000;
+      const count = mockAppointments.filter(
+        (a) => !a.seen_at && new Date(a.created_at).getTime() >= cutoff,
+      ).length;
+      return { count };
+    },
+  },
+  {
+    method: 'GET',
     pattern: /^\/appointments\/([^/]+)$/,
     handler: (_ctx, [id]) =>
       mockAppointments.find((a) => a.id === id) ?? mockAppointments[0],
