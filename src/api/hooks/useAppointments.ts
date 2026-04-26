@@ -146,9 +146,17 @@ export function useUnseenCount() {
   });
 }
 
+interface MarkSeenContext {
+  dashboardSnapshots: Array<[readonly unknown[], DashboardData | undefined]>;
+  listSnapshots: Array<[readonly unknown[], Appointment[] | undefined]>;
+  detailSnapshot: Appointment | undefined;
+  unseenCountSnapshot: { count: number } | undefined;
+  wasUnseen: boolean;
+}
+
 export function useMarkAppointmentSeen() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useMutation<Appointment, Error, string, MarkSeenContext>({
     mutationFn: (id: string) =>
       apiClient<Appointment>(`${ENDPOINTS.APPOINTMENTS}/${id}/seen`, {
         method: 'POST',
@@ -159,9 +167,31 @@ export function useMarkAppointmentSeen() {
     // "Últimas Citas Agendadas" list for the rest of this session, and
     // only drop off on the next real fetch (page reload / navigation).
     onMutate: async (id) => {
+      // Cancel in-flight refetches so they can't overwrite our patch.
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: dashboardKeys.all }),
+        queryClient.cancelQueries({ queryKey: appointmentKeys.all }),
+      ]);
+
       const stamp = new Date().toISOString();
       const patchAppt = <T extends { id: string; seen_at: string | null }>(a: T): T =>
         a.id === id && !a.seen_at ? { ...a, seen_at: stamp } : a;
+
+      // Snapshot every cache entry we mutate so onError can restore them
+      // verbatim. Without this rollback, a failing POST left the UI looking
+      // "seen" until the next real fetch, masking backend errors.
+      const dashboardSnapshots = queryClient.getQueriesData<DashboardData | undefined>({
+        queryKey: dashboardKeys.all,
+      });
+      const listSnapshots = queryClient.getQueriesData<Appointment[] | undefined>({
+        queryKey: appointmentKeys.all,
+      });
+      const detailSnapshot = queryClient.getQueryData<Appointment | undefined>(
+        appointmentKeys.detail(id),
+      );
+      const unseenCountSnapshot = queryClient.getQueryData<{ count: number } | undefined>(
+        appointmentKeys.unseenCount(),
+      );
 
       let wasUnseen = false;
 
@@ -200,6 +230,30 @@ export function useMarkAppointmentSeen() {
         queryClient.setQueryData<{ count: number } | undefined>(
           appointmentKeys.unseenCount(),
           (old) => (old && old.count > 0 ? { count: old.count - 1 } : old),
+        );
+      }
+
+      return {
+        dashboardSnapshots,
+        listSnapshots,
+        detailSnapshot,
+        unseenCountSnapshot,
+        wasUnseen,
+      };
+    },
+    onError: (_err, id, context) => {
+      if (!context) return;
+      for (const [key, data] of context.dashboardSnapshots) {
+        queryClient.setQueryData(key, data);
+      }
+      for (const [key, data] of context.listSnapshots) {
+        queryClient.setQueryData(key, data);
+      }
+      queryClient.setQueryData(appointmentKeys.detail(id), context.detailSnapshot);
+      if (context.wasUnseen) {
+        queryClient.setQueryData(
+          appointmentKeys.unseenCount(),
+          context.unseenCountSnapshot,
         );
       }
     },
