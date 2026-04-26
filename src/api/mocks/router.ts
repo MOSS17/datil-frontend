@@ -281,7 +281,14 @@ const HANDLERS: MockHandler[] = [
         .filter((a) => new Date(a.end_time).getTime() >= Date.now())
         .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
         .slice(0, 10);
-      const latest = [...active]
+      // Mirror the backend dashboard query (internal/repository/dashboard.go):
+      // only unseen rows booked in the last 5 days appear in "Últimas Citas".
+      // Without this filter, marking an appointment seen would have no effect
+      // on reload — the row would reappear because the mock returned every
+      // recent row regardless of seen_at.
+      const latestCutoff = Date.now() - 5 * 24 * 60 * 60 * 1000;
+      const latest = active
+        .filter((a) => !a.seen_at && new Date(a.created_at).getTime() >= latestCutoff)
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         .slice(0, 10);
       return {
@@ -358,8 +365,12 @@ const HANDLERS: MockHandler[] = [
     method: 'POST',
     pattern: /^\/appointments\/([^/]+)\/seen$/,
     handler: (_ctx, [id]) => {
+      // Mutate the underlying mock row so the seen state survives a reload:
+      // the dashboard handler reads from the same array and filters on
+      // seen_at, so without this the row would reappear as unseen.
       const appt = mockAppointments.find((a) => a.id === id) ?? mockAppointments[0];
-      return { ...appt, seen_at: appt.seen_at ?? new Date().toISOString() };
+      if (!appt.seen_at) appt.seen_at = new Date().toISOString();
+      return { ...appt };
     },
   },
   {
