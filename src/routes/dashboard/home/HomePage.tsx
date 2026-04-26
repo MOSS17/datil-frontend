@@ -50,7 +50,12 @@ export default function HomePage() {
   const markSeen = useMarkAppointmentSeen();
 
   const handleSelectAppointment = (appointment: Appointment) => {
-    if (!appointment.seen_at) markSeen.mutate(appointment.id);
+    // Fire unconditionally — MarkSeen is idempotent server-side
+    // (`SET seen_at = COALESCE(seen_at, NOW())`). The previous guard
+    // skipped the POST when the cached row already had seen_at populated
+    // from an optimistic patch, even when the server still saw the row
+    // as unseen.
+    markSeen.mutate(appointment.id);
     setSelectedAppointment(appointment);
     setDrawerOpen(true);
   };
