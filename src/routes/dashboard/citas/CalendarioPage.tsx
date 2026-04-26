@@ -199,7 +199,9 @@ export default function CalendarioPage() {
   }, [pendingOffHourRange, openDrawerForRange]);
   const handleSelectAppointment = useCallback(
     (appointment: Appointment) => {
-      if (!appointment.seen_at) markSeen.mutate(appointment.id);
+      // Fire unconditionally — MarkSeen is idempotent server-side. See
+      // HomePage for the full rationale.
+      markSeen.mutate(appointment.id);
       setSelectedAppointment(appointment);
       setDetailDrawerOpen(true);
     },

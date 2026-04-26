@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/auth/AuthContext';
 import { Button } from '@/components/ui/Button';
+import { useUnseenCount } from '@/api/hooks/useAppointments';
 import { cn } from '@/lib/cn';
 
 interface NavItem {
@@ -20,10 +21,11 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   end?: boolean;
+  badgeKey?: 'unseen';
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/dashboard', label: 'Inicio', icon: Home, end: true },
+  { to: '/dashboard', label: 'Inicio', icon: Home, end: true, badgeKey: 'unseen' },
   { to: '/dashboard/citas', label: 'Calendario', icon: Calendar },
   { to: '/dashboard/servicios', label: 'Catálogo', icon: HeartHandshake },
   { to: '/dashboard/horario', label: 'Disponibilidad', icon: CalendarClock },
@@ -64,36 +66,48 @@ function SidebarBrand({ onClose }: { onClose: () => void }) {
 }
 
 function SidebarNav({ onNavigate }: { onNavigate: () => void }) {
+  const { data: unseenCount = 0 } = useUnseenCount();
   return (
     <nav aria-label="Navegación principal" className="flex flex-col gap-100">
-      {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={end}
-          onClick={onNavigate}
-          className={({ isActive }) =>
-            cn(
-              'flex h-1000 items-center gap-300 rounded-md px-400 font-sans text-body-sm transition-colors',
-              isActive
-                ? 'bg-surface-secondary-subtle text-primary'
-                : 'hover:bg-surface-secondary-subtle',
-            )
-          }
-        >
-          {({ isActive }) => (
-            <>
-              <Icon
-                aria-hidden
-                size={16}
-                strokeWidth={1.75}
-                className={isActive ? 'text-icon-primary' : 'text-icon-secondary'}
-              />
-              <span>{label}</span>
-            </>
-          )}
-        </NavLink>
-      ))}
+      {NAV_ITEMS.map(({ to, label, icon: Icon, end, badgeKey }) => {
+        const badge = badgeKey === 'unseen' && unseenCount > 0 ? unseenCount : 0;
+        return (
+          <NavLink
+            key={to}
+            to={to}
+            end={end}
+            onClick={onNavigate}
+            className={({ isActive }) =>
+              cn(
+                'flex h-1000 items-center gap-300 rounded-md px-400 font-sans text-body-sm transition-colors',
+                isActive
+                  ? 'bg-surface-secondary-subtle text-primary'
+                  : 'hover:bg-surface-secondary-subtle',
+              )
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <Icon
+                  aria-hidden
+                  size={16}
+                  strokeWidth={1.75}
+                  className={isActive ? 'text-icon-primary' : 'text-icon-secondary'}
+                />
+                <span className="flex-1">{label}</span>
+                {badge > 0 && (
+                  <span
+                    aria-label={`${badge} citas nuevas sin ver`}
+                    className="inline-flex min-w-500 items-center justify-center rounded-full bg-surface-accent px-200 font-sans text-caption font-semibold text-on-color"
+                  >
+                    {badge > 99 ? '99+' : badge}
+                  </span>
+                )}
+              </>
+            )}
+          </NavLink>
+        );
+      })}
     </nav>
   );
 }
