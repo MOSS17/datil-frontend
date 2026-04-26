@@ -162,10 +162,10 @@ export function useMarkAppointmentSeen() {
         method: 'POST',
       }),
     // Optimistic patch of the cached dashboard + appointment lists so the
-    // "new" pill and badge count update instantly. We intentionally do NOT
-    // invalidate the dashboard query — the row must stay visible in the
-    // "Últimas Citas Agendadas" list for the rest of this session, and
-    // only drop off on the next real fetch (page reload / navigation).
+    // "new" pill and badge count update instantly. onSettled then invalidates
+    // so the canonical state from the server replaces our patch — without
+    // this, a row marked seen kept reappearing after the cached query was
+    // dropped (e.g. on reload) because we never re-read the canonical list.
     onMutate: async (id) => {
       // Cancel in-flight refetches so they can't overwrite our patch.
       await Promise.all([
@@ -256,6 +256,15 @@ export function useMarkAppointmentSeen() {
           context.unseenCountSnapshot,
         );
       }
+    },
+    onSettled: (_data, _err, id) => {
+      // Pull canonical state from the server so the row drops out of latest
+      // (or stays, if it failed) instead of relying on a stale optimistic
+      // patch that survives until the cache is dropped on reload.
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+      queryClient.invalidateQueries({ queryKey: appointmentKeys.all });
+      queryClient.invalidateQueries({ queryKey: appointmentKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: appointmentKeys.unseenCount() });
     },
   });
 }
